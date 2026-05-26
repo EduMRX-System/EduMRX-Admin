@@ -1,7 +1,10 @@
-import React from 'react'
+import DashboardSection from "@/components/sections/DashboardSection";
 
 export default function DashboardView() {
   return (
-    <div>DashboardView</div>
+    <>
+      <DashboardSection />
+    </>
   )
 }
+  

@@ -10,6 +10,8 @@ import reportsIcon from "../public/icons/reports-icon.svg";
 import settingsIcon from "../public/icons/settings-icon.svg";
 
 import searchIcon from "../public/icons/search-icon.svg";
+import phoneIcon from "../public/icons/phone-icon.svg";
+import passwordIcon from "../public/icons/password-icon.svg";
 
 export const icons = {
   dashboardIcon,
@@ -23,4 +25,6 @@ export const icons = {
   reportsIcon,
   settingsIcon,
   searchIcon,
+  phoneIcon,
+  passwordIcon,
 };

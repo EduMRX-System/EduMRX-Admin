@@ -1,7 +1,3 @@
-import React from 'react'
+import DashboardView from "@/views/DashboardView";
 
-export default function page() {
-  return (
-    <div>Hello World</div>
-  )
-}
+export default DashboardView

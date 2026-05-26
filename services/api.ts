@@ -17,7 +17,7 @@ AuthAPI.interceptors.request.use((config) => {
 });
 
 AuthAPI.interceptors.response.use(
-  (res) => {
+  (res) => {  
     return res;
   },
 
