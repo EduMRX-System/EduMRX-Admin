@@ -10,6 +10,8 @@ import Title from "@/components/ui/Title";
 import { useMutation } from "@tanstack/react-query";
 import { AuthAPI } from "@/services/api";
 import { toast } from "react-toastify";
+import { useRouter } from "next/navigation";
+import { useAuthStore } from "@/store/authStore";
 
 const schema = yup.object({
     phone: yup
@@ -21,7 +23,7 @@ const schema = yup.object({
         }),
     password: yup
         .string()
-        .min(8, "At least 8 characters")
+        .min(1, "At least 8 characters")
         .required("Password is required"),
 });
 
@@ -40,6 +42,9 @@ export default function LoginView() {
     const [phoneDisplay, setPhoneDisplay] = useState("");
     const [phoneFull, setPhoneFull] = useState("998");
 
+    const router = useRouter();
+    const { login } = useAuthStore();
+
     const {
         register,
         handleSubmit,
@@ -55,11 +60,26 @@ export default function LoginView() {
             return res?.data;
         },
         onSuccess: (data) => {
-            toast.success("Login to profile success");
-            console.log("Response data:", data);
+            login(data.user, {
+                access_token: data.access_token,
+                refresh_token: data.refresh_token,
+            });
+
+            toast.success(data?.message || "Login successfully");
+
+            console.log(data);
+
+            router.push("/");
         },
         onError: (err: any) => {
-            toast.error(err?.response?.data?.message || err.message || "Failed to login profile");
+            toast.error(
+                err?.response?.data?.message ||
+                err.message ||
+                "Login amalga oshmadi"
+            );
+
+            console.log(err);
+
         },
     });
 
@@ -77,9 +97,13 @@ export default function LoginView() {
 
     const isPhoneComplete = phoneFull.replace(/\D/g, "").length === 12;
 
-    // Forma muvaffaqiyatli validatsiyadan o'tganda faqat shu funksiya ishlaydi
+    // Backendga yuborishdan oldin telefon raqamiga "+" belgisi qo'shildi
     const onSubmit = (data: FormData) => {
-        loginToProfile(data);
+        const formattedData = {
+            ...data,
+            phone: `+${data.phone}`
+        };
+        loginToProfile(formattedData);
     };
 
     return (
@@ -98,7 +122,6 @@ export default function LoginView() {
                         <p className="text-[14px] text-[#464555]">Please enter your details to sign in.</p>
                     </div>
 
-                    {/* handleSubmit to'g'rilandi */}
                     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
 
                         {/* Phone */}
@@ -115,7 +138,6 @@ export default function LoginView() {
                                     type="tel"
                                     value={phoneDisplay}
                                     onChange={handlePhoneChange}
-                                    disabled={isPhoneComplete}
                                     placeholder="90-123-45-67"
                                     className={`border rounded-lg w-full h-[40px] pl-[90px] pr-[36px] text-[14px] outline-none
                                         placeholder:text-[#6B7280] text-[#191C1D]
@@ -136,19 +158,6 @@ export default function LoginView() {
                             </div>
                             {errors.phone && (
                                 <p className="text-red-400 text-[11px] mt-1 ml-2">{errors.phone.message}</p>
-                            )}
-                            {isPhoneComplete && (
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setPhoneDisplay("");
-                                        setPhoneFull(""); // Tozalash to'g'rilandi
-                                        setValue("phone", "", { shouldValidate: false });
-                                    }}
-                                    className="text-[11px] text-indigo-400 hover:text-indigo-600 mt-1 underline"
-                                >
-                                    Raqamni o'zgartirish
-                                </button>
                             )}
                         </div>
 
@@ -182,7 +191,7 @@ export default function LoginView() {
                             )}
                         </div>
 
-                        {/* Submit Button to'g'rilandi */}
+                        {/* Submit Button */}
                         <button
                             type="submit"
                             disabled={isPending}

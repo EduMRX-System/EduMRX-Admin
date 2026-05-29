@@ -12,6 +12,7 @@ import settingsIcon from "../public/icons/settings-icon.svg";
 import searchIcon from "../public/icons/search-icon.svg";
 import phoneIcon from "../public/icons/phone-icon.svg";
 import passwordIcon from "../public/icons/password-icon.svg";
+import plusIcon from "../public/icons/plus-icon.svg";
 
 export const icons = {
   dashboardIcon,
@@ -27,4 +28,5 @@ export const icons = {
   searchIcon,
   phoneIcon,
   passwordIcon,
+  plusIcon,
 };

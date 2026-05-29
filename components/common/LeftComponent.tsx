@@ -82,7 +82,7 @@ export default function LeftComponent() {
                         icon: icons.reportsIcon,
                     },
                     {
-                        id: 9,
+                        id: 10,
                         href: "/settings",
                         label: "Settings",
                         icon: icons.settingsIcon,
@@ -103,9 +103,7 @@ export default function LeftComponent() {
                                 <Image
                                     src={item.icon}
                                     alt={item.label}
-                                    width={20}
-                                    height={20}
-                                    className={`${isActive ? "invert brightness-0" : ""}`}
+                                    className={`${isActive ? "invert brightness-0" : ""} w-[20px] h-[20px]`}
                                 />
                                 <span>{item.label}</span>
                             </Link>
