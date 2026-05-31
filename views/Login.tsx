@@ -8,7 +8,7 @@ import { Eye, EyeOff, Lock } from "lucide-react";
 import Text from "@/components/ui/Text";
 import Title from "@/components/ui/Title";
 import { useMutation } from "@tanstack/react-query";
-import { AuthAPI } from "@/services/api";
+import { API } from "@/services/api";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
@@ -56,7 +56,7 @@ export default function LoginView() {
 
     const { mutate: loginToProfile, isPending } = useMutation({
         mutationFn: async (body: FormData) => {
-            const res = await AuthAPI.post("/api/v1/login/", body);
+            const res = await API.post("auth/login/", body);
             return res?.data;
         },
         onSuccess: (data) => {
@@ -67,19 +67,18 @@ export default function LoginView() {
 
             toast.success(data?.message || "Login successfully");
 
-            console.log(data);
-
             router.push("/");
         },
         onError: (err: any) => {
-            toast.error(
+            const backendError =
+                err?.response?.data?.non_field_errors?.[0] ||
                 err?.response?.data?.message ||
-                err.message ||
-                "Login amalga oshmadi"
-            );
+                err?.message ||
+                "Login amalga oshmadi";
+
+            toast.error(backendError);
 
             console.log(err);
-
         },
     });
 
@@ -97,7 +96,6 @@ export default function LoginView() {
 
     const isPhoneComplete = phoneFull.replace(/\D/g, "").length === 12;
 
-    // Backendga yuborishdan oldin telefon raqamiga "+" belgisi qo'shildi
     const onSubmit = (data: FormData) => {
         const formattedData = {
             ...data,
@@ -109,8 +107,7 @@ export default function LoginView() {
     return (
         <div className="min-h-screen bg-gradient-to-br from-[#EEF2FF] via-[#F8F9FF] to-[#E0E7FF] flex items-center justify-center p-4">
             <div className="w-full max-w-[448px]">
-                <div className="bg-white rounded-2xl shadow-xl shadow-indigo-100/60 border border-indigo-50 p-8">
-
+                <div className="bg-white rounded-2xl shadow-xl shadow-indigo-100/60 border border-indigo-50 p-8 transform transition-all animate-in fade-in slide-in-from-top-12 duration-500 ease-out">
                     {/* Logo */}
                     <div className="mb-8 text-center">
                         <Title text="EDU X" />

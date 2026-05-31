@@ -8,6 +8,82 @@ import { usePathname } from "next/navigation";
 export default function LeftComponent() {
     const pathname = usePathname();
 
+    const navlinks = [
+        {
+            id: 1,
+            href: "/",
+            label: "Dashboard",
+            icon: icons.dashboardIcon,
+        },
+        {
+            id: 2,
+            href: "/centers",
+            label: "Learing Centers",
+            icon: icons.learningCenterIcon,
+        },
+        {
+            id: 3,
+            href: "/directors",
+            label: "Directors",
+            icon: icons.directorIcon,
+        },
+        {
+            id: 4,
+            href: "/students",
+            label: "Students",
+            icon: icons.studentsIcon,
+        },
+        {
+            id: 5,
+            href: "/teachers",
+            label: "Teachers",
+            icon: icons.teachersIcon,
+        },
+        {
+            id: 6,
+            href: "/courses",
+            label: "Courses",
+            icon: icons.coursesIcon,
+        },
+        {
+            id: 7,
+            href: "/groups",
+            label: "Groups",
+            icon: icons.groupsIcon,
+        },
+        {
+            id: 8,
+            href: "/attendance",
+            label: "Attendance",
+            icon: icons.attendanceIcon,
+        },
+        {
+            id: 9,
+            href: "/payments",
+            label: "Payments",
+            icon: icons.paymentsIcon,
+        },
+        {
+            id: 10,
+            href: "/exams",
+            label: "Exams",
+            icon: icons.examsIcon,
+        },
+        {
+            id: 11,
+            href: "/reports",
+            label: "Reports",
+            icon: icons.reportsIcon,
+        },
+        {
+            id: 12,
+            href: "/settings",
+            label: "Settings",
+            icon: icons.settingsIcon,
+        },
+
+    ]
+
     return (
         <div className="p-4">
             <div className="flex gap-[12px] mb-[32px] items-center ">
@@ -26,73 +102,11 @@ export default function LeftComponent() {
             </div>
 
             <nav className="">
-                {[
-                    {
-                        id: 1,
-                        href: "/",
-                        label: "Dashboard",
-                        icon: icons.dashboardIcon,
-                    },
-                    {
-                        id: 2,
-                        href: "/students",
-                        label: "Students",
-                        icon: icons.studentsIcon,
-                    },
-                    {
-                        id: 3,
-                        href: "/teachers",
-                        label: "Teachers",
-                        icon: icons.teachersIcon,
-                    },
-                    {
-                        id: 4,
-                        href: "/courses",
-                        label: "Courses",
-                        icon: icons.coursesIcon,
-                    },
-                    {
-                        id: 5,
-                        href: "/groups",
-                        label: "Groups",
-                        icon: icons.groupsIcon,
-                    },
-                    {
-                        id: 6,
-                        href: "/attendance",
-                        label: "Attendance",
-                        icon: icons.attendanceIcon,
-                    },
-                    {
-                        id: 7,
-                        href: "/payments",
-                        label: "Payments",
-                        icon: icons.paymentsIcon,
-                    },
-                    {
-                        id: 8,
-                        href: "/exams",
-                        label: "Exams",
-                        icon: icons.examsIcon,
-                    },
-                    {
-                        id: 9,
-                        href: "/reports",
-                        label: "Reports",
-                        icon: icons.reportsIcon,
-                    },
-                    {
-                        id: 10,
-                        href: "/settings",
-                        label: "Settings",
-                        icon: icons.settingsIcon,
-                    },
-
-                ].map((item) => {
+                {navlinks.map((item) => {
                     const isActive = pathname === item.href;
 
                     return (
-                        <div key={item.href}>
+                        <div key={item.id}>
                             <Link
                                 href={item.href}
                                 className={`

@@ -12,7 +12,7 @@ export default function MailLayout({
   return (
     <ProtectedRoute>
       <div className="bg-[#F8F9FAFF] min-h-screen flex flex-col">
-        <aside className="bg-white fixed left-0 top-0 h-screen w-60 z-20">
+        <aside className="bg-white  border-r border-gray-200 shadow-sm fixed left-0 top-0 h-screen w-60 z-20">
           <LeftComponent />
         </aside>
 

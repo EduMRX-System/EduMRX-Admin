@@ -3,6 +3,7 @@
 import { useAuthStore } from "@/store/authStore";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { toast } from "react-toastify";
 
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
     const router = useRouter();
@@ -16,6 +17,7 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
 
     useEffect(() => {
         if (isInitialized && !isAuthenticated) {
+            toast.warn("you are logged out")
             router.push("/login");
         }
     }, [isInitialized, isAuthenticated, router]);

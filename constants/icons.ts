@@ -8,6 +8,8 @@ import paymentsIcon from "../public/icons/payments-icon.svg";
 import examsIcon from "../public/icons/exams-icon.svg";
 import reportsIcon from "../public/icons/reports-icon.svg";
 import settingsIcon from "../public/icons/settings-icon.svg";
+import learningCenterIcon from "../public/icons/learning-center-icon.svg";
+import directorIcon from "../public/icons/director-icon.svg";
 
 import searchIcon from "../public/icons/search-icon.svg";
 import phoneIcon from "../public/icons/phone-icon.svg";
@@ -29,4 +31,6 @@ export const icons = {
   phoneIcon,
   passwordIcon,
   plusIcon,
+  learningCenterIcon,
+  directorIcon,
 };

@@ -1,7 +1,18 @@
-import React from 'react'
+"use client"
+
+import Text from '@/components/ui/Text'
+import Title from '@/components/ui/Title'
+import { API } from '@/services/api'
 
 export default function GroupsView() {
   return (
-    <div>GroupsView</div>
+    <div>
+      <div className="flex items-center justify-between">
+        <div className="">
+          <Title text="Financial Overview" />
+          <Text text="Manage payments, track debts, and view financial history." />
+        </div>
+      </div>
+    </div>
   )
 }

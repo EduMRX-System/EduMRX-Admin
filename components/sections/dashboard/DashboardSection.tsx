@@ -1,4 +1,4 @@
-import AttendanceOverview from "@/components/ui/DashboardChart";
+import AttendanceOverview from "@/components/sections/dashboard/DashboardChart";
 import Text from "@/components/ui/Text";
 import Title from "@/components/ui/Title";
 import { icons } from "@/constants/icons";
