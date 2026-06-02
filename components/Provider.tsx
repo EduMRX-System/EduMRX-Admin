@@ -21,6 +21,7 @@ export default function Provider({ children }: { children: React.ReactNode }) {
         <QueryClientProvider client={queryClient}>
             {children}
             <ToastContainer position="top-right" autoClose={3000} />
+
         </QueryClientProvider>
     );
 }

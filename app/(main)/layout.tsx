@@ -20,7 +20,7 @@ export default function MailLayout({
           <Header />
         </header>
 
-        <main className="p-[30px_30px_0_30px] ml-60 max-[1150px]:ml-0 mt-20 min-h-screen">
+        <main className="p-[30px_30px_0_30px] ml-60 max-[1150px]:ml-0 mt-20 min-h-screen mb-[50px]">
           {children}
         </main>
       </div>

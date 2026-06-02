@@ -1,29 +1,46 @@
 import { icons } from "@/constants/icons";
 import { useAuthStore } from "@/store/authStore";
 import Image from "next/image";
+import Link from "next/link";
 
 export default function Header() {
     const { user } = useAuthStore()
 
 
     return (
-        <header>
-            <div className="border-b border-gray-200 shadow-sm p-[24px_12px] flex justify-between items-center">
-                <div className="border border-[#C7C4D8] rounded-lg max-w-[380px] gap-[10px] p-[0_0_0_12px] w-full flex items-center h-[40px]">
-                    <Image src={icons.searchIcon} alt="search-icon" />
-                    <input type="text" placeholder="Search students, courses..." className="outline-none text-[#6B7280]" />
-                </div>
+        <header className="sticky top-0 z-40 w-full bg-white border-b border-slate-100">
+            <div className="max-w-[1600px] mx-auto px-6 h-16 flex justify-end items-center">
 
-                <div className="flex items-center gap-[15px]">
-                    <div className="flex items-center">
-                        <span className="text-[14px] text-[#464555] border-r-[1.5px] pr-[15px] border-[#464555]">{user?.role?.toUpperCase()}</span>
-                        <span className="text-[14px] text-[#464555] pl-[15px]">{user?.full_name}</span>
+
+                <Link href="/settings" className="flex items-center gap-6">
+
+                    {/* User Info */}
+                    <div className="text-right">
+                        <p className="text-[12px] font-medium text-slate-900 leading-none">
+                            {user?.full_name || "User Name"}
+                        </p>
+                        <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-1">
+                            {user?.role || "Admin"}
+                        </p>
                     </div>
-                    {
-                        user?.avatar ? <Image src={user?.avatar} alt="user-avatar" className="w-[32px] h-[32px] rounded-full" /> :
-                            <i className="bi bi-person-circle text-[#464555] text-[25px]"></i>
-                    }
-                </div>
+
+                    {/* Avatar */}
+                    <div className="w-9 h-9 rounded-full bg-slate-100 overflow-hidden flex items-center justify-center">
+                        {user?.avatar ? (
+                            <Image
+                                src={user.avatar}
+                                alt="avatar"
+                                width={36}
+                                height={36}
+                                className="w-full h-full object-cover"
+                            />
+                        ) : (
+                            <span className="text-xs font-bold text-slate-600">
+                                {user?.full_name?.charAt(0).toUpperCase() || "A"}
+                            </span>
+                        )}
+                    </div>
+                </Link>
             </div>
         </header>
     )

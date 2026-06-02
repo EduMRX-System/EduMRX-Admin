@@ -78,6 +78,7 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
     const {
         register,
         handleSubmit,
+        setError,
         setValue,
         reset,
         formState: { errors },
@@ -130,6 +131,24 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
             });
             onClose?.();
         },
+        onError: (error: any) => {
+            const responseData = error?.response?.data;
+
+            if (responseData && typeof responseData === 'object') {
+                Object.keys(responseData).forEach((key) => {
+                    if (key in schema.fields) {
+                        setError(key as any, {
+                            type: "manual",
+                            message: responseData[key][0]
+                        });
+                    } else {
+                        toast.error(`${key}: ${responseData[key][0]}`);
+                    }
+                });
+            } else {
+                toast.error("Xatolik yuz berdi, qaytadan urinib ko'ring");
+            }
+        }
     });
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {

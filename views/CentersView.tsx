@@ -1,38 +1,52 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { API } from "@/services/api";
 import { ILearningCenter, IAPIResponse } from "@/types";
-import { LayoutGrid, List, Plus, Loader2, AlertCircle, Building2, ChevronLeft, ChevronRight } from "lucide-react";
+import { LayoutGrid, List, Plus, Loader2, AlertCircle, Building2, ChevronLeft, ChevronRight, Search, X } from "lucide-react";
 import AddLearningCenterModal from "@/components/sections/learningCenter/addLearningCenterModal";
 import Title from "@/components/ui/Title";
 import Text from "@/components/ui/Text";
 import CenterItem from "@/components/sections/learningCenter/CenterItem";
 import DeleteLearningCenterModal from "@/components/sections/learningCenter/DeleteLearningCenterModal";
 import EditLearningCenterModal from "@/components/sections/learningCenter/EditLearningCenterModal";
+import ReactPaginate from "react-paginate";
+import PaginationControl from "@/components/ui/PaginationControl";
 
 export default function LearningCentersList() {
-    const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+    const [pageSize, setPageSize] = useState(5);
     const [page, setPage] = useState(1);
+
+    const [viewMode, setViewMode] = useState<"list" | "grid">("list");
     const [isAddOpen, setIsAddOpen] = useState(false);
+
+    const [search, setSearch] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
 
     const [editTarget, setEditTarget] = useState<ILearningCenter | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
-    const { data, isLoading, isError, error } = useQuery<IAPIResponse<ILearningCenter[]>>({
-        queryKey: ["learning-centers", page],
+    const { data, isLoading, isError, error } = useQuery({
+        queryKey: ["learning-centers", page, pageSize, debouncedSearch],
         queryFn: async () => {
-            const res = await API.get(`/api/v1/super-admin/centers/?page=${page}`);
+            const res = await API.get(`/api/v1/super-admin/centers/?page=${page}&page_size=${pageSize}&search=${debouncedSearch}`);
             return res?.data;
         }
     });
 
-    console.log("learning center", data);
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedSearch(search);
+            setPage(1); // Qidiruv o'zgarganda 1-sahifaga qaytarish
+        }, 500);
 
+        return () => clearTimeout(handler); // Har bir yangi harfda eski timerni o'chiradi
+    }, [search]);
 
     const centersList = data?.results || [];
-    const totalPages = data?.total_pages || 1;
+    const totalCount = data?.count || 0;
+    const totalPages = Math.ceil(totalCount / pageSize);
 
     const formatPhoneView = (phone: string) => {
         const clean = phone?.replace(/\D/g, "") || "";
@@ -52,6 +66,7 @@ export default function LearningCentersList() {
         if (diffDays <= 7) return { text: `${diffDays} kun qoldi`, cls: "bg-amber-50 text-amber-700 border-amber-200" };
         return { text: dateStr, cls: "bg-slate-50 text-slate-600 border-slate-200" };
     };
+
 
     return (
         <div className="w-full space-y-6">
@@ -89,6 +104,26 @@ export default function LearningCentersList() {
                 </div>
             </div>
 
+
+            <div className="relative w-full sm:w-64">
+                <input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Ism, telefon yoki email..."
+                    className="w-full pl-9 pr-8 py-2 text-sm border border-slate-200 rounded-lg outline-none"
+                />
+                <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-slate-400" />
+                {search && (
+                    <button
+                        onClick={() => setSearch("")}
+                        className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
+                    >
+                        <X className="w-4 h-4" />
+                    </button>
+                )}
+            </div>
+
+
             {/* Loading & Error Blocks */}
             {isLoading && (
                 <div className="flex flex-col items-center justify-center py-24 bg-white rounded-xl border border-slate-100 shadow-xs">
@@ -102,6 +137,13 @@ export default function LearningCentersList() {
                     <AlertCircle className="w-10 h-10 text-red-500 mb-3" />
                     <h3 className="text-base font-semibold text-red-900">Ma'lumotlarni yuklashda xatolik</h3>
                     <p className="text-sm text-red-600 mt-1">{(error as any)?.message || "Backend xatoligi yuz berdi."}</p>
+                </div>
+            )}
+
+
+            {isLoading && debouncedSearch && (
+                <div className="text-xs text-indigo-600 animate-pulse py-2">
+                    Qidirilmoqda...
                 </div>
             )}
 
@@ -140,7 +182,7 @@ export default function LearningCentersList() {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100 text-sm text-slate-700">
-                                        {centersList.map((center) => (
+                                        {centersList.map((center: ILearningCenter) => (
                                             <CenterItem
                                                 key={center.id}
                                                 center={center}
@@ -157,7 +199,7 @@ export default function LearningCentersList() {
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                            {centersList.map((center) => (
+                            {centersList.map((center: ILearningCenter) => (
                                 <CenterItem
                                     key={center.id}
                                     center={center}
@@ -171,31 +213,14 @@ export default function LearningCentersList() {
                         </div>
                     )}
 
-                    {/* PAGINATION PANEL */}
-                    {totalPages > 1 && (
-                        <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-                            <span className="text-xs font-medium text-slate-500">
-                                Sahifa <span className="text-slate-800 font-semibold">{page}</span> / {totalPages}
-                            </span>
-
-                            <div className="flex items-center gap-2">
-                                <button
-                                    onClick={() => setPage((p) => Math.max(p - 1, 1))}
-                                    disabled={page === 1}
-                                    className="inline-flex items-center justify-center w-9 h-9 border border-slate-200 rounded-lg text-slate-600 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-white cursor-pointer transition-colors"
-                                >
-                                    <ChevronLeft className="w-4 h-4" />
-                                </button>
-                                <button
-                                    onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-                                    disabled={page === totalPages}
-                                    className="inline-flex items-center justify-center w-9 h-9 border border-slate-200 rounded-lg text-slate-600 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-white cursor-pointer transition-colors"
-                                >
-                                    <ChevronRight className="w-4 h-4" />
-                                </button>
-                            </div>
-                        </div>
-                    )}
+                    <PaginationControl
+                        totalCount={data?.count || 0}
+                        page={page}
+                        totalPages={totalPages}
+                        pageSize={pageSize}
+                        setPage={setPage}
+                        setPageSize={setPageSize}
+                    />
                 </>
             )}
 
