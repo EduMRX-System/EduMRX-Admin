@@ -32,7 +32,7 @@ interface AuthState {
   initAuth: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   tokens: null,
   isAuthenticated: false,
@@ -55,6 +55,9 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   initAuth: async () => {
     if (typeof window === "undefined") return;
+
+    // Katta plyus: Agar allaqachon tekshirilgan bo'lsa, qayta ishga tushmaydi
+    if (get().isInitialized) return;
 
     const storedTokens = localStorage.getItem("tokens");
 
@@ -82,6 +85,9 @@ export const useAuthStore = create<AuthState>((set) => ({
         isInitialized: true,
       });
     } catch (error) {
+      console.error("Auth initialization error:", error); // Xatolikni konsolda ko'rish uchun
+
+      // Faqat token eskirgan bo'lsagina o'chirish ma'qul, lekin hozircha xavfsizlik uchun:
       localStorage.removeItem("tokens");
       set({
         user: null,

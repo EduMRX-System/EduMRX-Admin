@@ -13,11 +13,11 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
 
     useEffect(() => {
         initAuth();
-    }, [initAuth]);
+    }, []);
 
     useEffect(() => {
         if (isInitialized && !isAuthenticated) {
-            toast.warn("you are logged out")
+            toast.warn("Siz tizimga kirmagansiz yoki seans muddati tugagan!");
             router.push("/login");
         }
     }, [isInitialized, isAuthenticated, router]);

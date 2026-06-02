@@ -1,4 +1,13 @@
-interface IGroupData {
+export interface IAPIResponse<T> {
+  count: number;
+  total_pages: number;
+  current_page: number;
+  next: string;
+  previous: string;
+  results: T;
+}
+
+export interface IGroupData {
   id: string;
   name: string;
   course: string;
@@ -15,36 +24,24 @@ interface IGroupData {
   is_full: boolean;
 }
 
-interface IStudent {
+// @/types/index.ts faylida
+export interface IStudent {
   id: string;
-  student_id: string;
+  first_name: string;
+  last_name: string;
   full_name: string;
-  avatar: string;
   phone: string;
   email: string;
-  center_name: string;
-  status: string;
-  enrolled_at: string;
+  date_of_birth: string;
+  address: string;
+  status: "active" | "inactive" | "pending";
+  notes?: string;
+  latitude?: string;
+  longitude?: string;
+  center?: { id: string; name: string };
 }
 
-interface IStudents<T> {
-  count: number;
-  total_pages: number;
-  current_page: number;
-  next: string;
-  previous: string;
-  results: T;
-}
-interface ILearningCenters<T> {
-  count: number;
-  total_pages: number;
-  current_page: number;
-  next: string;
-  previous: string;
-  results: T;
-}
-
-interface ILearningCenter {
+export interface ILearningCenter {
   id: string;
   name: string;
   slug: string;
@@ -58,10 +55,21 @@ interface ILearningCenter {
   subscription_expires: string;
 }
 
-interface IDirector {
-  first_name: string;
-  last_name: string;
+export interface IDirector {
+  id: string;
+  full_name: string;
   phone: string;
   email: string;
-  password: string;
+  avatar: string;
+  created_at: string;
+}
+
+export interface ITeacher {
+  id: string;
+  full_name: string;
+  avatar: string;
+  phone: string;
+  email: string;
+  specialization: string;
+  experience: number;
 }

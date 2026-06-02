@@ -8,6 +8,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { API } from "@/services/api";
 import { ShieldAlert, X, Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "react-toastify";
+import { IDirector } from "./DirectorItem";
 
 function formatUzPhone(raw: string): string {
     const d = raw.slice(0, 9);
@@ -28,20 +29,16 @@ const schema = yup.object({
             return digits.length === 12;
         }),
     email: yup.string().email("Xato email formati").required("Email kiritilishi shart"),
-    password: yup.string().required("Parol kiritilishi shart").min(6, "Parol kamida 6 ta belgi bo'lishi kerak")
+    password: yup.string().required("Tahrirlash uchun yangi parol kiritishingiz shart").min(6, "Parol kamida 6 ta belgi bo'lishi kerak")
 }).required();
 
 type FormData = yup.InferType<typeof schema>;
 
-export default function AddDirectorModal({ onClose }: { onClose?: () => void }) {
+export default function EditDirectorModal({ director, onClose }: { director: IDirector; onClose?: () => void }) {
     const queryClient = useQueryClient();
     const [isMounted, setIsMounted] = useState(false);
     const [phoneDisplay, setPhoneDisplay] = useState("");
     const [showPassword, setShowPassword] = useState(false);
-
-    useEffect(() => {
-        setIsMounted(true);
-    }, []);
 
     const {
         register,
@@ -53,17 +50,37 @@ export default function AddDirectorModal({ onClose }: { onClose?: () => void }) 
         resolver: yupResolver(schema)
     });
 
-    const { mutate: createDirector, isPending } = useMutation({
+    useEffect(() => {
+        setIsMounted(true);
+        if (director) {
+            const nameParts = director.full_name ? director.full_name.trim().split(" ") : [];
+            const firstName = nameParts[0] || "";
+            const lastName = nameParts.slice(1).join(" ") || "";
+
+            setValue("first_name", firstName);
+            setValue("last_name", lastName);
+            setValue("email", director.email);
+
+            // Telefon raqamini o'rnatish
+            const rawPhone = director.phone ? director.phone.replace(/\D/g, "") : "";
+            const localPart = rawPhone.startsWith("998") ? rawPhone.slice(3) : rawPhone;
+            setPhoneDisplay(formatUzPhone(localPart));
+            setValue("phone", "998" + localPart);
+            setValue("password", ""); // Xavfsizlik sababli bo'sh turadi, kiritish majburiy
+        }
+    }, [director, setValue]);
+
+    const { mutate: updateDirector, isPending } = useMutation({
         mutationFn: async (body: FormData) => {
             const payload = {
                 ...body,
                 phone: body.phone.replace(/\D/g, "")
             };
-            const res = await API.post("/api/v1/super-admin/directors/", payload);
+            const res = await API.put(`/api/v1/super-admin/directors/${director.id}/`, payload);
             return res.data;
         },
         onSuccess: () => {
-            toast.success("Yangi director muvaffaqiyatli qo'shildi!");
+            toast.success("Director muvaffaqiyatli yangilandi!");
             queryClient.invalidateQueries({ queryKey: ["directors"] });
             onClose?.();
         },
@@ -92,7 +109,7 @@ export default function AddDirectorModal({ onClose }: { onClose?: () => void }) 
     };
 
     const onSubmit = (data: FormData) => {
-        createDirector(data);
+        updateDirector(data);
     };
 
     return (
@@ -111,19 +128,19 @@ export default function AddDirectorModal({ onClose }: { onClose?: () => void }) 
                     <ShieldAlert className="w-6 h-6" />
                 </div>
 
-                <h3 className="text-[#313131] text-[18px] font-semibold mb-4">Add New Director</h3>
+                <h3 className="text-[#313131] text-[18px] font-semibold mb-4">Edit Director Details</h3>
 
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                     {/* First Name & Last Name */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="text-[14px] text-[#464555] mb-1 block font-semibold">First Name</label>
-                            <input {...register("first_name")} type="text" placeholder="E.g., Xusan" className={`border rounded-lg w-full h-[40px] px-3 text-[14px] outline-none transition-all focus:border-indigo-500 ${errors.first_name ? "border-red-300 bg-red-50/10" : "border-[#C7C4D8]"}`} />
+                            <input {...register("first_name")} type="text" placeholder="First name" className={`border rounded-lg w-full h-[40px] px-3 text-[14px] outline-none transition-all focus:border-indigo-500 ${errors.first_name ? "border-red-300 bg-red-50/10" : "border-[#C7C4D8]"}`} />
                             {errors.first_name && <p className="text-red-400 text-[11px] mt-1">{errors.first_name.message}</p>}
                         </div>
                         <div>
                             <label className="text-[14px] text-[#464555] mb-1 block font-semibold">Last Name</label>
-                            <input {...register("last_name")} type="text" placeholder="E.g., Yarashev" className={`border rounded-lg w-full h-[40px] px-3 text-[14px] outline-none transition-all focus:border-indigo-500 ${errors.last_name ? "border-red-300 bg-red-50/10" : "border-[#C7C4D8]"}`} />
+                            <input {...register("last_name")} type="text" placeholder="Last name" className={`border rounded-lg w-full h-[40px] px-3 text-[14px] outline-none transition-all focus:border-indigo-500 ${errors.last_name ? "border-red-300 bg-red-50/10" : "border-[#C7C4D8]"}`} />
                             {errors.last_name && <p className="text-red-400 text-[11px] mt-1">{errors.last_name.message}</p>}
                         </div>
                     </div>
@@ -142,16 +159,16 @@ export default function AddDirectorModal({ onClose }: { onClose?: () => void }) 
                         </div>
                         <div>
                             <label className="text-[14px] text-[#464555] mb-1 block font-semibold">Email Address</label>
-                            <input {...register("email")} type="email" placeholder="xusaweanyarashov1@gmail.com" className={`border rounded-lg w-full h-[40px] px-3 text-[14px] outline-none transition-all focus:border-indigo-500 ${errors.email ? "border-red-300 bg-red-50/10" : "border-[#C7C4D8]"}`} />
+                            <input {...register("email")} type="email" placeholder="email@example.com" className={`border rounded-lg w-full h-[40px] px-3 text-[14px] outline-none transition-all focus:border-indigo-500 ${errors.email ? "border-red-300 bg-red-50/10" : "border-[#C7C4D8]"}`} />
                             {errors.email && <p className="text-red-400 text-[11px] mt-1">{errors.email.message}</p>}
                         </div>
                     </div>
 
                     {/* Password */}
                     <div>
-                        <label className="text-[14px] text-[#464555] mb-1 block font-semibold">Password</label>
+                        <label className="text-[14px] text-[#464555] mb-1 block font-semibold">New Password (Required)</label>
                         <div className="relative flex items-center">
-                            <input {...register("password")} type={showPassword ? "text" : "password"} placeholder="••••••••" className={`border rounded-lg w-full h-[40px] pl-3 pr-10 text-[14px] outline-none transition-all focus:border-indigo-500 ${errors.password ? "border-red-300 bg-red-50/10" : "border-[#C7C4D8]"}`} />
+                            <input {...register("password")} type={showPassword ? "text" : "password"} placeholder="Enter new password to save updates" className={`border rounded-lg w-full h-[40px] pl-3 pr-10 text-[14px] outline-none transition-all focus:border-indigo-500 ${errors.password ? "border-red-300 bg-red-50/10" : "border-[#C7C4D8]"}`} />
                             <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer">
                                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                             </button>
@@ -162,7 +179,7 @@ export default function AddDirectorModal({ onClose }: { onClose?: () => void }) 
                     {/* Submit Button */}
                     <button type="submit" disabled={isPending} className="w-full h-[40px] mt-2 bg-[#4F46E5] hover:bg-[#4338CA] disabled:bg-indigo-300 text-white rounded-lg text-[14px] font-bold transition-colors cursor-pointer flex items-center justify-center">
                         {isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                        {isPending ? "Creating Director..." : "Create Director"}
+                        {isPending ? "Saving Updates..." : "Save Updates"}
                     </button>
                 </form>
             </div>

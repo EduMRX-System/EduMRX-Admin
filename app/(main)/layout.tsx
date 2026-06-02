@@ -16,11 +16,11 @@ export default function MailLayout({
           <LeftComponent />
         </aside>
 
-        <header className="bg-white fixed top-0 left-60 right-0 z-10 max-[1150px]:left-0">
+        <header className="bg-white fixed top-0 left-60 right-0 z-50 max-[1150px]:left-0">
           <Header />
         </header>
 
-        <main className="p-[30px_30px_0_30px] ml-60 max-[1150px]:ml-0 mt-20">
+        <main className="p-[30px_30px_0_30px] ml-60 max-[1150px]:ml-0 mt-20 min-h-screen">
           {children}
         </main>
       </div>

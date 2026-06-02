@@ -18,7 +18,7 @@ export default function LeftComponent() {
         {
             id: 2,
             href: "/centers",
-            label: "Learing Centers",
+            label: "Learning Centers",  
             icon: icons.learningCenterIcon,
         },
         {
@@ -81,9 +81,7 @@ export default function LeftComponent() {
             label: "Settings",
             icon: icons.settingsIcon,
         },
-
-    ]
-
+    ];
     return (
         <div className="p-4">
             <div className="flex gap-[12px] mb-[32px] items-center ">

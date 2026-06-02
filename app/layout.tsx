@@ -5,7 +5,7 @@ import Provider from "@/components/Provider";
 
 import "bootstrap-icons/font/bootstrap-icons.css";
 
-
+import "leaflet/dist/leaflet.css";
 
 
 const inter = Inter({

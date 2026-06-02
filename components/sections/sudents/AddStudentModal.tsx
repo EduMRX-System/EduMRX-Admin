@@ -1,15 +1,17 @@
-"use client"
+"use client";
 
-import { useState } from "react";
-import { icons } from "@/constants/icons";
-import Image from "next/image";
+import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { API } from "@/services/api";
-import { Lock, Eye, EyeOff } from "lucide-react";
+import { User, Eye, EyeOff, MapPin, Notebook, X, Loader2 } from "lucide-react";
 import { toast } from "react-toastify";
+import { YMaps, Map, Placemark } from "@pbe/react-yandex-maps";
+
+import { ChevronDown, Search } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
 function formatUzPhone(raw: string): string {
     const d = raw.slice(0, 9);
@@ -20,37 +22,51 @@ function formatUzPhone(raw: string): string {
 }
 
 const schema = yup.object({
-    full_name: yup.string().required("Ism va familiya kiritilishi shart"),
+    first_name: yup.string().required("Ism kiritilishi shart"),
+    last_name: yup.string().required("Familiya kiritilishi shart"),
     phone: yup
         .string()
-        .required("Phone number is mandatory")
-        .test("phone-complete", "Enter a full number", (val) => {
+        .required("Telefon raqam majburiy")
+        .test("phone-complete", "Raqamni to'liq kiriting", (val) => {
             const digits = val?.replace(/\D/g, "") ?? "";
             return digits.length === 12;
         }),
-    email: yup
+    email: yup.string().email("Xato email formati").required("Email kiritilishi shart"),
+    password: yup
         .string()
-        .email("Xato email formati")
-        .matches(
-            /^[a-zA-Z0-9._%+-]+@gmail\.com$/,
-            "Faqat @gmail.com elektron pochtasi qabul qilinadi"
-        )
-        .required("Email kiritilishi shart"), center: yup.string().required("Markazni tanlang"),
-    date_of_birth: yup.string().required("Tug'ilgan sana shart"),
-    address: yup.string().required("Manzil shart"),
+        .required("Parol kiritilishi shart")
+        .min(6, "Parol kamida 6 ta belgidan iborat bo'lishi kerak"),
+    center: yup.string().uuid("O'quv markazi UUID formatida bo'lishi shart").required("Markazni tanlash shart"),
+    date_of_birth: yup.string().required("Tug'ilgan sana kiritilishi shart"),
+    address: yup.string().required("Manzil kiritilishi shart"),
+    latitude: yup.string().required("Kenglik (Lat) shart"),
+    longitude: yup.string().required("Uzunlik (Lang) shart"),
     notes: yup.string().optional(),
-    status: yup.string().required("Status shart"),
-    password: yup.string().min(6, "Parol kamida 6 ta belgi bo'lsin").required("Parol shart"),
+    status: yup.string().oneOf(["active", "frozen", "inactive"]).required("Status shart"),
 }).required();
 
 type FormData = yup.InferType<typeof schema>;
 
-export default function AddStudentModal({ onClose }: { onClose?: () => void }) {
+interface AddStudentModalProps {
+    onClose: () => void;
+}
+
+export default function AddStudentModal({ onClose }: AddStudentModalProps) {
     const queryClient = useQueryClient();
+    const [isMounted, setIsMounted] = useState(false);
+    const [phoneDisplay, setPhoneDisplay] = useState("");
     const [showPassword, setShowPassword] = useState(false);
 
-    const [phoneDisplay, setPhoneDisplay] = useState("");
-    const [phoneFull, setPhoneFull] = useState("998");
+    const mapRef = useRef<any>(null);
+    const [mapCoords, setMapCoords] = useState<[number, number]>([41.311081, 69.240562]);
+
+    const [isCenterOpen, setIsCenterOpen] = useState(false);
+    const [centerSearch, setCenterSearch] = useState("");
+    const [selectedCenter, setSelectedCenter] = useState<{ id: string, name: string } | null>(null);
+
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
 
     const {
         register,
@@ -62,29 +78,83 @@ export default function AddStudentModal({ onClose }: { onClose?: () => void }) {
         resolver: yupResolver(schema),
         defaultValues: {
             status: "active",
+            center: "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            latitude: "41.311081",
+            longitude: "69.240562",
+            date_of_birth: new Date().toISOString().split('T')[0],
+            address: ""
         }
     });
 
+
+    const { data: centersData, isLoading: isCentersLoading } = useQuery({
+        queryKey: ["centers-list"],
+        queryFn: async () => {
+            const res = await API.get("/api/v1/super-admin/centers/");
+            return res.data.results; // Backenddan keladigan formatga qarab o'zgartiring
+        }
+    });
+
+    const filteredCenters = centersData?.filter((c: any) =>
+        c.name.toLowerCase().includes(centerSearch.toLowerCase())
+    );
+
+    const handleMapClick = async (e: any) => {
+        const coords = e.get("coords") as [number, number];
+        setMapCoords(coords);
+
+        const latStr = coords[0].toFixed(6);
+        const lngStr = coords[1].toFixed(6);
+
+        setValue("latitude", latStr, { shouldValidate: true });
+        setValue("longitude", lngStr, { shouldValidate: true });
+
+        if (mapRef.current) {
+            mapRef.current.panTo(coords, {
+                flying: true,
+                duration: 600
+            });
+        }
+
+        try {
+            const response = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords[0]}&lon=${coords[1]}&accept-language=uz,ru,en`
+            );
+            const data = await response.json();
+
+            if (data && data.display_name) {
+                // Juda uzun manzil bo'lib ketmasligi uchun chiroyli qilib kesib olamiz
+                setValue("address", data.display_name, { shouldValidate: true });
+            }
+        } catch (error) {
+            console.error("Manzilni aniqlashda xatolik:", error);
+        }
+    };
+
     const { mutate: addStudent, isPending } = useMutation({
         mutationFn: async (body: FormData) => {
-            const res = await API.post("/api/v1/super-admin/students/", body);
-            return res?.data;
+            const res = await API.post("/api/v1/super-admin/students/", body, {
+                headers: {
+                    "Content-Type": "application/json",
+                },
+            });
+
+            return res.data;
         },
         onSuccess: (data) => {
-            toast.success(data?.message || "O'quvchi muvaffaqiyatli qo'shildi!");
+            toast.success(data?.message || "Talaba muvaffaqiyatli qo'shildi!");
             reset();
             setPhoneDisplay("");
-            setPhoneFull("998");
-            queryClient.invalidateQueries({ queryKey: ["students"] });
-            if (onClose) onClose();
+            setShowPassword(false);
+            setMapCoords([41.311081, 69.240562]);
+
+            queryClient.invalidateQueries({
+                queryKey: ["students-list"],
+            });
+            onClose();
         },
         onError: (err: any) => {
-            const backendError =
-                err?.response?.data?.non_field_errors?.[0] ||
-                err?.response?.data?.message ||
-                err?.message ||
-                "Xatolik yuz berdi";
-            toast.error(backendError);
+            toast.error(err?.response?.data?.detail || "Xatolik yuz berdi!");
         }
     });
 
@@ -92,64 +162,62 @@ export default function AddStudentModal({ onClose }: { onClose?: () => void }) {
         const raw = e.target.value.replace(/\D/g, "");
         const withPrefix = raw.startsWith("998") ? raw : "998" + raw.replace(/^998/, "");
         const local = withPrefix.slice(3, 12);
-        const formatted = formatUzPhone(local);
-        setPhoneDisplay(formatted);
-
+        setPhoneDisplay(formatUzPhone(local));
         const full = "998" + local;
-        setPhoneFull(full);
         setValue("phone", full, { shouldValidate: true });
     };
 
-    const isPhoneComplete = phoneFull.replace(/\D/g, "").length === 12;
-
     const onSubmit = (data: FormData) => {
-        const formattedData = {
-            ...data,
-            phone: `+${data.phone}`
-        };
-        addStudent(formattedData);
+        addStudent(data);
     };
-
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div
-                className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity duration-300 animate-in fade-in"
+                className={`fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity duration-500 ${isMounted ? "opacity-100" : "opacity-0"}`}
                 onClick={onClose}
             />
-            <div className="bg-white p-6 rounded-xl max-w-xl w-full max-h-[90vh] overflow-y-auto relative z-10 shadow-2xl border border-slate-100 transform transition-all duration-300 ease-out animate-in fade-in zoom-in-95 slide-in-from-top-12">
-                {onClose && (
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-lg hover:bg-slate-50 cursor-pointer"
-                    >
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                )}
 
-                <div className="mb-[10px] border-[#C7C4D8] border shadow-sm w-[44px] h-[44px] rounded-lg flex justify-center items-center">
-                    <Image src={icons.studentsIcon || "/student.svg"} alt="student-icon" width={24} height={24} />
+            <div className={`bg-white p-6 rounded-xl max-w-xl w-full max-h-[90vh] overflow-y-auto relative z-10 shadow-2xl border border-slate-100 transform transition-all duration-500 ease-out ${isMounted ? "opacity-100 translate-y-0 scale-100" : "opacity-0 -translate-y-12 scale-95"}`}>
+
+                <button type="button" onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-50 cursor-pointer border-none bg-transparent">
+                    <X className="w-5 h-5" />
+                </button>
+
+                <div className="mb-[10px] border-[#C7C4D8] border shadow-sm w-[44px] h-[44px] rounded-lg flex justify-center items-center text-indigo-600 bg-indigo-50/10">
+                    <User className="w-6 h-6" />
                 </div>
+
                 <h3 className="text-[#313131] text-[18px] font-semibold mb-4">Add New Student</h3>
 
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                    <div>
-                        <label className="text-[14px] text-[#464555] mb-1 block font-semibold">Full Name</label>
-                        <input
-                            {...register("full_name")}
-                            type="text"
-                            placeholder="John Doe"
-                            className={`border rounded-lg w-full h-[40px] px-3 text-[14px] outline-none ${errors.full_name ? "border-red-300" : "border-[#C7C4D8]"}`}
-                        />
-                        {errors.full_name && <p className="text-red-400 text-[11px] mt-1">{errors.full_name.message}</p>}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-[14px] text-[#464555] mb-1 block font-semibold">First Name</label>
+                            <input
+                                {...register("first_name")}
+                                type="text"
+                                placeholder="John"
+                                className={`border rounded-lg w-full h-[40px] px-3 text-[14px] outline-none transition-all ${errors.first_name ? "border-red-300 bg-red-50/10" : "border-[#C7C4D8] focus:border-indigo-500"}`}
+                            />
+                            {errors.first_name && <p className="text-red-400 text-[11px] mt-1">{errors.first_name.message}</p>}
+                        </div>
+                        <div>
+                            <label className="text-[14px] text-[#464555] mb-1 block font-semibold">Last Name</label>
+                            <input
+                                {...register("last_name")}
+                                type="text"
+                                placeholder="Doe"
+                                className={`border rounded-lg w-full h-[40px] px-3 text-[14px] outline-none transition-all ${errors.last_name ? "border-red-300 bg-red-50/10" : "border-[#C7C4D8] focus:border-indigo-500"}`}
+                            />
+                            {errors.last_name && <p className="text-red-400 text-[11px] mt-1">{errors.last_name.message}</p>}
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label className="text-[14px] text-[#464555] mb-1 block font-semibold">Phone</label>
+                            <label className="text-[14px] text-[#464555] mb-1 block font-semibold">Phone Number</label>
                             <div className="relative flex items-center">
                                 <div className="absolute left-3 flex items-center gap-1.5 select-none pointer-events-none">
                                     <span className="text-base leading-none">🇺🇿</span>
@@ -160,51 +228,50 @@ export default function AddStudentModal({ onClose }: { onClose?: () => void }) {
                                     value={phoneDisplay}
                                     onChange={handlePhoneChange}
                                     placeholder="90-123-45-67"
-                                    className={`border rounded-lg w-full h-[40px] pl-[90px] pr-[36px] text-[14px] outline-none
-                                    placeholder:text-[#6B7280] text-[#191C1D] transition-all
-                                    ${errors.phone ? "border-red-300 bg-red-50/10" : isPhoneComplete ? "border-emerald-300 bg-emerald-50/10" : "border-[#C7C4D8]"}`}
+                                    className={`border rounded-lg w-full h-[40px] pl-[90px] pr-[10px] text-[14px] outline-none transition-all ${errors.phone ? "border-red-300 bg-red-50/10" : "border-[#C7C4D8] focus:border-indigo-500"}`}
                                 />
-                                {isPhoneComplete && (
-                                    <div className="absolute right-3 w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
-                                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                        </svg>
-                                    </div>
-                                )}
                             </div>
-                            {errors.phone && <p className="text-red-400 text-[11px] mt-1 ml-2">{errors.phone.message}</p>}
+                            {errors.phone && <p className="text-red-400 text-[11px] mt-1 ml-1">{errors.phone.message}</p>}
                         </div>
 
                         <div>
-                            <label className="text-[14px] text-[#464555] mb-1 block font-semibold">Email</label>
-                            <input
-                                {...register("email")}
-                                type="email"
-                                placeholder="example@gmail.com"
-                                className={`border rounded-lg w-full h-[40px] px-3 text-[14px] outline-none ${errors.email ? "border-red-300" : "border-[#C7C4D8]"}`}
-                            />
-                            {errors.email && <p className="text-red-400 text-[11px] mt-1">{errors.email.message}</p>}
+                            <label className="text-[14px] text-[#464555] mb-1 block font-semibold">Password</label>
+                            <div className="relative flex items-center">
+                                <input
+                                    {...register("password")}
+                                    type={showPassword ? "text" : "password"}
+                                    placeholder="••••••••"
+                                    className={`border rounded-lg w-full h-[40px] pl-3 pr-[40px] text-[14px] outline-none transition-all ${errors.password ? "border-red-300 bg-red-50/10" : "border-[#C7C4D8] focus:border-indigo-500"}`}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-3 text-slate-400 hover:text-slate-600 cursor-pointer p-0.5 rounded-sm focus:outline-none border-none bg-transparent flex items-center"
+                                >
+                                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                </button>
+                            </div>
+                            {errors.password && <p className="text-red-400 text-[11px] mt-1">{errors.password.message}</p>}
                         </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label className="text-[14px] text-[#464555] mb-1 block font-semibold">Learning Center</label>
+                            <label className="text-[14px] text-[#464555] mb-1 block font-semibold">Email Address</label>
                             <input
-                                {...register("center")}
-                                type="text"
-                                placeholder="Center Name/ID"
-                                className={`border rounded-lg w-full h-[40px] px-3 text-[14px] outline-none ${errors.center ? "border-red-300" : "border-[#C7C4D8]"}`}
+                                {...register("email")}
+                                type="email"
+                                placeholder="student@example.com"
+                                className={`border rounded-lg w-full h-[40px] px-3 text-[14px] outline-none transition-all ${errors.email ? "border-red-300 bg-red-50/10" : "border-[#C7C4D8] focus:border-indigo-500"}`}
                             />
-                            {errors.center && <p className="text-red-400 text-[11px] mt-1">{errors.center.message}</p>}
+                            {errors.email && <p className="text-red-400 text-[11px] mt-1">{errors.email.message}</p>}
                         </div>
-
                         <div>
                             <label className="text-[14px] text-[#464555] mb-1 block font-semibold">Date of Birth</label>
                             <input
                                 {...register("date_of_birth")}
                                 type="date"
-                                className={`border rounded-lg w-full h-[40px] px-3 text-[14px] outline-none ${errors.date_of_birth ? "border-red-300" : "border-[#C7C4D8]"}`}
+                                className={`border rounded-lg w-full h-[40px] px-3 text-[14px] outline-none transition-all ${errors.date_of_birth ? "border-red-300" : "border-[#C7C4D8] focus:border-indigo-500"}`}
                             />
                             {errors.date_of_birth && <p className="text-red-400 text-[11px] mt-1">{errors.date_of_birth.message}</p>}
                         </div>
@@ -212,53 +279,149 @@ export default function AddStudentModal({ onClose }: { onClose?: () => void }) {
 
                     <div>
                         <label className="text-[14px] text-[#464555] mb-1 block font-semibold">Address</label>
-                        <input
-                            {...register("address")}
-                            type="text"
-                            placeholder="Toshkent sh., Chilonzor t."
-                            className={`border rounded-lg w-full h-[40px] px-3 text-[14px] outline-none ${errors.address ? "border-red-300" : "border-[#C7C4D8]"}`}
-                        />
+                        <div className="relative flex items-center">
+                            <MapPin className="absolute left-3 w-4 h-4 text-slate-400 select-none pointer-events-none" />
+                            <input
+                                {...register("address")}
+                                type="text"
+                                placeholder="Xaritadan tanlang yoki manzilni kiriting"
+                                className={`border rounded-lg w-full h-[40px] pl-10 pr-3 text-[14px] outline-none transition-all ${errors.address ? "border-red-300 bg-red-50/10" : "border-[#C7C4D8] focus:border-indigo-500"}`}
+                            />
+                        </div>
                         {errors.address && <p className="text-red-400 text-[11px] mt-1">{errors.address.message}</p>}
                     </div>
 
                     <div>
-                        <label className="text-[14px] text-[#464555] mb-1 block font-semibold">Notes</label>
-                        <textarea
-                            {...register("notes")}
-                            placeholder="Qo'shimcha ma'lumotlar..."
-                            className="border border-[#C7C4D8] rounded-lg w-full p-2 text-[14px] outline-none h-[60px] resize-none"
-                        />
+                        <label className="text-[14px] text-[#464555] mb-1.5 block font-semibold">Select Location on Yandex Map</label>
+                        <div className="w-full h-[200px] rounded-xl overflow-hidden border border-[#C7C4D8] relative z-0">
+                            {isMounted && (
+                                <YMaps query={{ lang: "ru_RU" }}>
+                                    <Map
+                                        instanceRef={(ref) => {
+                                            mapRef.current = ref;
+                                        }}
+                                        state={{ center: mapCoords, zoom: 12, controls: [] }}
+                                        onClick={handleMapClick}
+                                        style={{ width: "100%", height: "100%" }}
+                                    >
+                                        <Placemark geometry={mapCoords} />
+                                    </Map>
+                                </YMaps>
+                            )}
+                        </div>
+                        <p className="text-[11px] text-slate-400 mt-1">Xarita ustiga bosing — marker silliq siljiydi va manzil aniqlanadi.</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-3 rounded-xl border border-dashed border-slate-200">
+                        <div>
+                            <label className="text-[12px] text-slate-500 mb-1 block font-semibold">Map Latitude (Lat)</label>
+                            <input
+                                {...register("latitude")}
+                                type="text"
+                                placeholder="41.123456"
+                                className={`bg-white border rounded-lg w-full h-[36px] px-3 text-[13px] outline-none focus:border-indigo-500 ${errors.latitude ? "border-red-300" : "border-[#C7C4D8]"}`}
+                            />
+                            {errors.latitude && <p className="text-red-400 text-[11px] mt-1">{errors.latitude.message}</p>}
+                        </div>
+                        <div>
+                            <label className="text-[12px] text-slate-500 mb-1 block font-semibold">Map Longitude (Lang)</label>
+                            <input
+                                {...register("longitude")}
+                                type="text"
+                                placeholder="69.123456"
+                                className={`bg-white border rounded-lg w-full h-[36px] px-3 text-[13px] outline-none focus:border-indigo-500 ${errors.longitude ? "border-red-300" : "border-[#C7C4D8]"}`}
+                            />
+                            {errors.longitude && <p className="text-red-400 text-[11px] mt-1">{errors.longitude.message}</p>}
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-[14px] text-[#464555] mb-1 block font-semibold">Status</label>
+                            <select
+                                {...register("status")}
+                                className="border border-[#C7C4D8] rounded-lg w-full h-[40px] px-3 text-[14px] outline-none bg-white text-[#191C1D] focus:border-indigo-500"
+                            >
+                                <option value="active">Active</option>
+                                <option value="frozen">Frozen</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                        </div>
+                        <div className="relative">
+                            <label className="text-[14px] text-[#464555] mb-1 block font-semibold">Learning Center</label>
+                            <div
+                                className="border border-[#C7C4D8] rounded-lg w-full h-[40px] px-3 flex items-center justify-between cursor-pointer hover:border-indigo-500 transition-all"
+                                onClick={() => setIsCenterOpen(!isCenterOpen)}
+                            >
+                                <span className={selectedCenter ? "text-slate-900" : "text-slate-400"}>
+                                    {selectedCenter ? selectedCenter.name : "Markazni tanlang..."}
+                                </span>
+                                <ChevronDown className="w-4 h-4 text-slate-400" />
+                            </div>
+
+                            {isCenterOpen && (
+                                <div className="absolute w-full mt-1 bg-white border border-[#C7C4D8] rounded-lg shadow-xl z-50 p-2">
+                                    <div className="flex items-center gap-2 border-b pb-2 mb-2">
+                                        <Search className="w-4 h-4 text-slate-400" />
+                                        <input
+                                            autoFocus
+                                            placeholder="Qidirish..."
+                                            className="w-full outline-none text-[14px]"
+                                            onChange={(e) => setCenterSearch(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="max-h-[150px] overflow-y-auto">
+                                        {isCentersLoading ? (
+                                            <p className="text-center py-2 text-sm">Yuklanmoqda...</p>
+                                        ) : filteredCenters?.length > 0 ? (
+                                            filteredCenters.map((c: any) => (
+                                                <div
+                                                    key={c.id}
+                                                    className="px-3 py-2 hover:bg-indigo-50 cursor-pointer rounded-md text-[14px]"
+                                                    onClick={() => {
+                                                        setSelectedCenter({ id: c.id, name: c.name });
+                                                        setValue("center", c.id, { shouldValidate: true });
+                                                        setIsCenterOpen(false);
+                                                    }}
+                                                >
+                                                    {c.name}
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <p className="text-center py-2 text-sm text-slate-400">Topilmadi</p>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                            {errors.center && <p className="text-red-400 text-[11px] mt-1">{errors.center.message}</p>}
+                        </div>
                     </div>
 
                     <div>
-                        <label className="text-[14px] text-[#464555] mb-1 block font-semibold">Password</label>
-                        <div className="relative">
-                            <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                                <Lock className="w-[16px] h-[16px] text-[#C7C4D8]" />
-                            </div>
-                            <input
-                                {...register("password")}
-                                type={showPassword ? "text" : "password"}
-                                placeholder="Enter Password"
-                                className={`border rounded-lg w-full h-[40px] pl-[40px] pr-[40px] text-[14px] outline-none ${errors.password ? "border-red-300" : "border-[#C7C4D8]"}`}
+                        <label className="text-[14px] text-[#464555] mb-1 block font-semibold">Notes (Optional)</label>
+                        <div className="relative flex items-start">
+                            <Notebook className="absolute left-3 top-3 w-4 h-4 text-slate-400 select-none pointer-events-none" />
+                            <textarea
+                                {...register("notes")}
+                                placeholder="Additional notes about the student..."
+                                rows={2}
+                                className="border border-[#C7C4D8] rounded-lg w-full pl-10 pr-3 py-2 text-[14px] outline-none resize-none min-h-[60px] focus:border-indigo-500"
                             />
-                            <button
-                                type="button"
-                                onClick={() => setShowPassword((p) => !p)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#C7C4D8] hover:text-[#4338CA] transition-colors"
-                            >
-                                {showPassword ? <EyeOff className="w-[16px] h-[16px]" /> : <Eye className="w-[16px] h-[16px]" />}
-                            </button>
                         </div>
-                        {errors.password && <p className="text-red-400 text-[11px] mt-1">{errors.password.message}</p>}
                     </div>
 
                     <button
                         type="submit"
                         disabled={isPending}
-                        className="w-full h-[40px] mt-2 bg-[#4F46E5] hover:bg-[#4338CA] disabled:bg-indigo-300 text-white rounded-lg text-[14px] font-bold transition-colors cursor-pointer"
+                        className="w-full h-[40px] mt-2 bg-[#4F46E5] hover:bg-[#4338CA] disabled:bg-indigo-300 text-white rounded-lg text-[14px] font-bold transition-colors cursor-pointer flex items-center justify-center border-none select-none"
                     >
-                        {isPending ? "Adding Student..." : "Add Student"}
+                        {isPending ? (
+                            <span className="flex items-center gap-2">
+                                <Loader2 className="w-4 h-4 animate-spin" /> Adding Student...
+                            </span>
+                        ) : (
+                            "Add Student"
+                        )}
                     </button>
                 </form>
             </div>

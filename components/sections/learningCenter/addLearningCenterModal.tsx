@@ -6,7 +6,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { API } from "@/services/api";
-import { Building2, Upload, Link, Image as ImageIcon, X } from "lucide-react";
+import { Building2, Upload, Link, Image as ImageIcon, X, Search, ChevronDown } from "lucide-react";
 import { toast } from "react-toastify";
 import Image from "next/image";
 import { icons } from "@/constants/icons";
@@ -45,15 +45,26 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
     const [logoMode, setLogoMode] = useState<"upload" | "link">("upload");
     const [logoPreview, setLogoPreview] = useState<string>("");
     const fileInputRef = useRef<HTMLInputElement>(null);
-
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+    // Qidiruv va Dropdown uchun yangi statelar
+    const [isOpen, setIsOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [selectedDirectorName, setSelectedDirectorName] = useState("");
+    const dropdownRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         setIsMounted(true);
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    // Direktorlar ro'yxatini olish
-    const { data: directors } = useQuery({
+    const { data: directors, isLoading: isDirectorsLoading } = useQuery({
         queryKey: ["directors-list"],
         queryFn: async () => {
             const res = await API.get("/api/v1/super-admin/directors/");
@@ -61,11 +72,13 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
         }
     });
 
+    console.log("directors", directors);
+
+
     const {
         register,
         handleSubmit,
         setValue,
-        watch,
         reset,
         formState: { errors },
     } = useForm<FormData>({
@@ -76,11 +89,9 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
         }
     });
 
-
     const { mutate: addCenter, isPending } = useMutation({
         mutationFn: async (body: FormData) => {
             const formData = new FormData();
-
             formData.append("name", body.name);
             formData.append("slug", body.slug);
             formData.append("phone", body.phone);
@@ -88,10 +99,7 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
             formData.append("address", body.address);
             formData.append("director", body.director);
             formData.append("status", body.status);
-            formData.append(
-                "subscription_expires",
-                body.subscription_expires
-            );
+            formData.append("subscription_expires", body.subscription_expires);
 
             if (selectedFile) {
                 formData.append("logo", selectedFile);
@@ -106,28 +114,26 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
                     },
                 }
             );
-
             return res.data;
         },
-
         onSuccess: (data) => {
-            toast.success(data?.message);
-
+            toast.success(data?.message || "Muvaffaqiyatli yaratildi!");
             reset();
             setPhoneDisplay("");
             setLogoPreview("");
             setSelectedFile(null);
+            setSelectedDirectorName("");
+            setSearchTerm("");
 
             queryClient.invalidateQueries({
                 queryKey: ["learning-centers"],
             });
-
             onClose?.();
         },
     });
+
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-
         if (!file) return;
 
         if (file.size > 2 * 1024 * 1024) {
@@ -136,7 +142,6 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
         }
 
         setSelectedFile(file);
-
         const previewUrl = URL.createObjectURL(file);
         setLogoPreview(previewUrl);
     };
@@ -144,13 +149,11 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
     const clearLogo = () => {
         setSelectedFile(null);
         setLogoPreview("");
-
         if (fileInputRef.current) {
             fileInputRef.current.value = "";
         }
     };
 
-    // Telefon raqam inputi handleri
     const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const raw = e.target.value.replace(/\D/g, "");
         const withPrefix = raw.startsWith("998") ? raw : "998" + raw.replace(/^998/, "");
@@ -160,35 +163,38 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
         setValue("phone", full, { shouldValidate: true });
     };
 
-    // Nomi o'zgarganda avtomatik slug yasash
     const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
         setValue("name", val);
         const generatedSlug = val
             .toLowerCase()
-            .replace(/[^a-z0-9\s-]/g, "") // maxsus belgilarni o'chirish
-            .replace(/\s+/g, "-")        // bo'shliqlarni tirega almashtirish
-            .replace(/-+/g, "-");        // ketma-ket kelgan tirelarni bittaga keltirish
+            .replace(/[^a-z0-9\s-]/g, "")
+            .replace(/\s+/g, "-")
+            .replace(/-+/g, "-");
         setValue("slug", generatedSlug, { shouldValidate: true });
     };
 
-    // Form topshirilganda ishlaydi
+    // Direktorlarni qidiruv bo'yicha filterlash
+    const filteredDirectors = Array.isArray(directors)
+        ? directors.filter((dir: any) => {
+            const nameToSearch = (dir.full_name || dir.name || "").toLowerCase();
+            return nameToSearch.includes(searchTerm.toLowerCase());
+        })
+        : [];
+
     const onSubmit = (data: FormData) => {
         addCenter(data);
     };
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            {/* Orqa fon (Backdrop) */}
             <div className={`fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity duration-500 ${isMounted ? "opacity-100" : "opacity-0"}`} onClick={onClose} />
 
-            {/* Modal Oynasi */}
             <div className={`bg-white p-6 rounded-xl max-w-xl w-full max-h-[90vh] overflow-y-auto relative z-10 shadow-2xl border border-slate-100 transform transition-all duration-500 ease-out ${isMounted ? "opacity-100 translate-y-0 scale-100" : "opacity-0 -translate-y-12 scale-95"}`}>
 
                 {onClose && (
                     <button type="button" onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-50 cursor-pointer">
-                        <Image src={icons.learningCenterIcon} alt="learning-center-icon" className="w-5 h-5" />
-                    </button>
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>                    </button>
                 )}
 
                 <div className="mb-[10px] border-[#C7C4D8] border shadow-sm w-[44px] h-[44px] rounded-lg flex justify-center items-center text-indigo-600 bg-indigo-50/10">
@@ -213,36 +219,16 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
                         </div>
                     </div>
 
-                    {/* LOGO INTEGRATSIYASI */}
+                    {/* Logo Section */}
                     <div>
                         <div className="flex items-center justify-between mb-1.5">
-                            <label className="text-[14px] text-[#464555] font-semibold">
-                                Center Logo
-                            </label>
-
+                            <label className="text-[14px] text-[#464555] font-semibold">Center Logo</label>
                             <div className="flex bg-slate-100 p-0.5 rounded-lg text-xs font-medium text-slate-600">
-                                <button
-                                    type="button"
-                                    onClick={() => setLogoMode("upload")}
-                                    className={`flex items-center gap-1 px-2.5 py-1 rounded-md transition-all cursor-pointer ${logoMode === "upload"
-                                        ? "bg-white text-indigo-600 shadow-xs"
-                                        : "hover:text-slate-900"
-                                        }`}
-                                >
-                                    <Upload className="w-3 h-3" />
-                                    Upload
+                                <button type="button" onClick={() => setLogoMode("upload")} className={`flex items-center gap-1 px-2.5 py-1 rounded-md transition-all cursor-pointer ${logoMode === "upload" ? "bg-white text-indigo-600 shadow-xs" : "hover:text-slate-900"}`}>
+                                    <Upload className="w-3 h-3" /> Upload
                                 </button>
-
-                                <button
-                                    type="button"
-                                    onClick={() => setLogoMode("link")}
-                                    className={`flex items-center gap-1 px-2.5 py-1 rounded-md transition-all cursor-pointer ${logoMode === "link"
-                                        ? "bg-white text-indigo-600 shadow-xs"
-                                        : "hover:text-slate-900"
-                                        }`}
-                                >
-                                    <Link className="w-3 h-3" />
-                                    URL Link
+                                <button type="button" onClick={() => setLogoMode("link")} className={`flex items-center gap-1 px-2.5 py-1 rounded-md transition-all cursor-pointer ${logoMode === "link" ? "bg-white text-indigo-600 shadow-xs" : "hover:text-slate-900"}`}>
+                                    <Link className="w-3 h-3" /> URL Link
                                 </button>
                             </div>
                         </div>
@@ -251,17 +237,8 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
                             <div className="relative w-16 h-16 min-w-16 rounded-lg border border-dashed border-slate-300 bg-white flex items-center justify-center overflow-hidden group">
                                 {logoPreview ? (
                                     <>
-                                        <img
-                                            src={logoPreview}
-                                            alt="Logo preview"
-                                            className="w-full h-full object-cover"
-                                        />
-
-                                        <button
-                                            type="button"
-                                            onClick={clearLogo}
-                                            className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white rounded-lg cursor-pointer"
-                                        >
+                                        <img src={logoPreview} alt="Logo preview" className="w-full h-full object-cover" />
+                                        <button type="button" onClick={clearLogo} className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white rounded-lg cursor-pointer">
                                             <X className="w-4 h-4" />
                                         </button>
                                     </>
@@ -273,49 +250,81 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
                             <div className="w-full">
                                 {logoMode === "upload" ? (
                                     <>
-                                        <input
-                                            ref={fileInputRef}
-                                            id="logo-file-input"
-                                            type="file"
-                                            accept="image/png,image/jpeg,image/jpg,image/webp"
-                                            onChange={handleFileChange}
-                                            className="hidden"
-                                        />
-
-                                        <label
-                                            htmlFor="logo-file-input"
-                                            className="inline-flex items-center gap-2 px-4 h-[38px] bg-white border border-slate-200 text-slate-700 rounded-lg text-xs font-semibold hover:bg-slate-50 transition-all cursor-pointer"
-                                        >
-                                            <Upload className="w-3.5 h-3.5" />
-                                            Choose Image File
+                                        <input ref={fileInputRef} id="logo-file-input" type="file" accept="image/png,image/jpeg,image/jpg,image/webp" onChange={handleFileChange} className="hidden" />
+                                        <label htmlFor="logo-file-input" className="inline-flex items-center gap-2 px-4 h-[38px] bg-white border border-slate-200 text-slate-700 rounded-lg text-xs font-semibold hover:bg-slate-50 transition-all cursor-pointer">
+                                            <Upload className="w-3.5 h-3.5" /> Choose Image File
                                         </label>
-
-                                        <p className="text-[11px] text-slate-400 mt-1">
-                                            PNG, JPG, WEBP up to 2MB
-                                        </p>
+                                        <p className="text-[11px] text-slate-400 mt-1">PNG, JPG, WEBP up to 2MB</p>
                                     </>
                                 ) : (
-                                    <input
-                                        type="url"
-                                        placeholder="https://example.com/logo.png"
-                                        onChange={(e) => {
-                                            setLogoPreview(e.target.value);
-                                        }}
-                                        className="border border-slate-200 rounded-lg w-full h-[38px] px-3 text-xs outline-none bg-white focus:border-indigo-500"
-                                    />
+                                    <input type="url" placeholder="https://example.com/logo.png" onChange={(e) => setLogoPreview(e.target.value)} className="border border-slate-200 rounded-lg w-full h-[38px] px-3 text-xs outline-none bg-white focus:border-indigo-500" />
                                 )}
                             </div>
                         </div>
                     </div>
-                    {/* Director Select */}
-                    <div>
+
+                    {/* QIDIRUVLI YANGI DIRECTOR SELECT DROPDOWN ELEMENTI */}
+                    <div ref={dropdownRef} className="relative">
                         <label className="text-[14px] text-[#464555] mb-1 block font-semibold">Director</label>
-                        <select {...register("director")} className={`border rounded-lg w-full h-[40px] px-3 text-[14px] outline-none bg-white text-[#191C1D] ${errors.director ? "border-red-300" : "border-[#C7C4D8]"}`}>
-                            <option value="">Select Director...</option>
-                            {Array.isArray(directors) ? directors.map((dir: any) => (
-                                <option key={dir.id} value={dir.id}>{dir.full_name || dir.name || dir.id}</option>
-                            )) : <option value="3fa85f64-5717-4562-b3fc-2c963f66afa6">Test Director</option>}
-                        </select>
+
+                        <div
+                            onClick={() => !isDirectorsLoading && setIsOpen(!isOpen)}
+                            className={`border rounded-lg w-full h-[40px] px-3 text-[14px] flex items-center justify-between cursor-pointer bg-white transition-all ${errors.director ? "border-red-300" : "border-[#C7C4D8]"
+                                } ${isDirectorsLoading ? "opacity-60 cursor-not-allowed bg-slate-50" : ""}`}
+                        >
+                            <span className={selectedDirectorName ? "text-[#191C1D]" : "text-slate-400"}>
+                                {isDirectorsLoading ? "Loading directors..." : selectedDirectorName || "Select Director..."}
+                            </span>
+                            <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+                        </div>
+
+                        {isOpen && (
+                            <div className="absolute left-0 right-0 mt-1 bg-white border border-[#C7C4D8] rounded-lg shadow-xl z-50 max-h-[220px] overflow-hidden flex flex-col">
+                                {/* Search Input (Tepada qotib turadi) */}
+                                <div className="p-2 border-b border-slate-100 flex items-center gap-2 bg-slate-50 sticky top-0">
+                                    <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                    <input
+                                        type="text"
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        placeholder="Search director..."
+                                        className="w-full bg-transparent text-xs outline-none h-6 text-[#191C1D]"
+                                        autoFocus
+                                    />
+                                    {searchTerm && (
+                                        <X onClick={() => setSearchTerm("")} className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600 cursor-pointer" />
+                                    )}
+                                </div>
+
+                                {/* Options list (Scroll bo'ladi) */}
+                                <div className="overflow-y-auto flex-1 max-h-[160px]">
+                                    {filteredDirectors.length > 0 ? (
+                                        filteredDirectors.map((dir: any) => {
+                                            const nameText = dir.full_name || dir.name || dir.id;
+                                            return (
+                                                <div
+                                                    key={dir.id}
+                                                    onClick={() => {
+                                                        setSelectedDirectorName(nameText);
+                                                        setValue("director", dir.id, { shouldValidate: true }); // formaga ID saqlash
+                                                        setIsOpen(false);
+                                                        setSearchTerm("");
+                                                    }}
+                                                    className={`px-3 py-2 text-[13px] text-[#191C1D] hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer transition-colors ${selectedDirectorName === nameText ? "bg-indigo-50/60 font-medium text-indigo-600" : ""
+                                                        }`}
+                                                >
+                                                    {nameText}
+                                                </div>
+                                            );
+                                        })
+                                    ) : (
+                                        <div className="px-3 py-3 text-xs text-center text-slate-400">
+                                            No directors found
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                         {errors.director && <p className="text-red-400 text-[11px] mt-1">{errors.director.message}</p>}
                     </div>
 
