@@ -1,15 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { API } from "@/services/api";
-import { Building2, Upload, Link, Image as ImageIcon, X, Search, ChevronDown } from "lucide-react";
+import { Building2, Upload, Link, Image as ImageIcon, X, Search, ChevronDown, MapPin, Loader2 } from "lucide-react";
 import { toast } from "react-toastify";
-import Image from "next/image";
-import { icons } from "@/constants/icons";
 import { t } from "i18next";
 
 function formatUzPhone(raw: string): string {
@@ -35,9 +33,37 @@ const schema = yup.object({
     director: yup.string().uuid("Direktor UUID formatida bo'lishi shart").required("Direktorni tanlash shart"),
     status: yup.string().oneOf(["active", "pending", "inactive"]).required("Status shart"),
     subscription_expires: yup.string().required("Obuna tugash sanasi shart"),
+    latitude: yup.string().required("Xaritadan joylashuvni belgilang"),
+    longitude: yup.string().required("Xaritadan joylashuvni belgilang"),
 }).required();
 
 type FormData = yup.InferType<typeof schema>;
+
+// Yandex Maps loader — bir marta yuklansin
+let ymapsLoaded = false;
+let ymapsPromise: Promise<void> | null = null;
+
+function loadYandexMaps(): Promise<void> {
+    if (ymapsLoaded) return Promise.resolve();
+    if (ymapsPromise) return ymapsPromise;
+
+    ymapsPromise = new Promise((resolve, reject) => {
+        const apiKey = process.env.NEXT_PUBLIC_YANDEX_MAPS_KEY;
+        const script = document.createElement("script");
+        script.src = `https://api-maps.yandex.ru/2.1/?apikey=${apiKey}&lang=ru_RU`;
+        script.async = true;
+        script.onload = () => {
+            (window as any).ymaps.ready(() => {
+                ymapsLoaded = true;
+                resolve();
+            });
+        };
+        script.onerror = () => reject(new Error("Yandex Maps yuklanmadi"));
+        document.head.appendChild(script);
+    });
+
+    return ymapsPromise;
+}
 
 export default function AddLearningCenterModal({ onClose }: { onClose?: () => void }) {
     const queryClient = useQueryClient();
@@ -48,33 +74,24 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-    // Qidiruv va Dropdown uchun yangi statelar
+    // Director dropdown
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedDirectorName, setSelectedDirectorName] = useState("");
     const dropdownRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => {
-        setIsMounted(true);
-        const handleClickOutside = (event: MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-                setIsOpen(false);
-            }
-        };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
-
-    const { data: directors, isLoading: isDirectorsLoading } = useQuery({
-        queryKey: ["directors-list"],
-        queryFn: async () => {
-            const res = await API.get("/api/v1/super-admin/directors/");
-            return res?.data?.results || res?.data || [];
-        }
-    });
-
-    console.log("directors", directors);
-
+    // Yandex Maps
+    const mapContainerRef = useRef<HTMLDivElement>(null);
+    const mapInstanceRef = useRef<any>(null);
+    const placemarkRef = useRef<any>(null);
+    const [mapLoading, setMapLoading] = useState(true);
+    const [mapError, setMapError] = useState(false);
+    const [coords, setCoords] = useState<{ lat: string; lng: string } | null>(null);
+    const [addressSearchQuery, setAddressSearchQuery] = useState("");
+    const [isSearchingAddress, setIsSearchingAddress] = useState(false);
+    const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
+    const suggestionsRef = useRef<HTMLDivElement>(null);
+    const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const {
         register,
@@ -87,9 +104,163 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
         resolver: yupResolver(schema),
         defaultValues: {
             status: "active",
-            subscription_expires: new Date().toISOString().split('T')[0]
-        }
+            subscription_expires: new Date().toISOString().split("T")[0],
+        },
     });
+
+    useEffect(() => {
+        setIsMounted(true);
+
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+            if (suggestionsRef.current && !suggestionsRef.current.contains(event.target as Node)) {
+                setAddressSuggestions([]);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    // Yandex Map init
+    useEffect(() => {
+        if (!isMounted) return;
+
+        loadYandexMaps()
+            .then(() => {
+                if (!mapContainerRef.current) return;
+                const ymaps = (window as any).ymaps;
+
+                const map = new ymaps.Map(mapContainerRef.current, {
+                    center: [41.2995, 69.2401], // Toshkent
+                    zoom: 12,
+                    controls: ["zoomControl"],
+                });
+
+                mapInstanceRef.current = map;
+                setMapLoading(false);
+
+                map.events.add("click", (e: any) => {
+                    const coordinate = e.get("coords");
+                    updateMarker(coordinate, ymaps, map);
+                });
+            })
+            .catch(() => {
+                setMapError(true);
+                setMapLoading(false);
+            });
+
+        return () => {
+            if (mapInstanceRef.current) {
+                mapInstanceRef.current.destroy();
+                mapInstanceRef.current = null;
+            }
+        };
+    }, [isMounted]);
+
+    const updateMarker = useCallback((coordinate: number[], ymaps: any, map: any) => {
+        const [lat, lng] = coordinate;
+        const latStr = lat.toFixed(6);
+        const lngStr = lng.toFixed(6);
+
+        setCoords({ lat: latStr, lng: lngStr });
+        setValue("latitude", latStr, { shouldValidate: true });
+        setValue("longitude", lngStr, { shouldValidate: true });
+
+        if (placemarkRef.current) {
+            map.geoObjects.remove(placemarkRef.current);
+        }
+
+        const placemark = new ymaps.Placemark(
+            coordinate,
+            {},
+            {
+                preset: "islands#violetDotIconWithCaption",
+                iconColor: "#4F46E5",
+            }
+        );
+
+        map.geoObjects.add(placemark);
+        placemarkRef.current = placemark;
+
+        // Reverse geocode — manzilni olish
+        ymaps.geocode(coordinate, { results: 1 }).then((res: any) => {
+            const firstGeoObject = res.geoObjects.get(0);
+            if (firstGeoObject) {
+                const addressText = firstGeoObject.getAddressLine();
+                setValue("address", addressText, { shouldValidate: true });
+                setAddressSearchQuery(addressText);
+            }
+        });
+    }, [setValue]);
+
+    // Address qidiruv
+    const handleAddressSearch = (query: string) => {
+        setAddressSearchQuery(query);
+        setValue("address", query, { shouldValidate: true });
+
+        if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+        if (!query.trim() || query.length < 3) {
+            setAddressSuggestions([]);
+            return;
+        }
+
+        searchDebounceRef.current = setTimeout(async () => {
+            const ymaps = (window as any).ymaps;
+            if (!ymaps || !mapInstanceRef.current) return;
+
+            setIsSearchingAddress(true);
+            try {
+                const res = await ymaps.geocode(query, {
+                    results: 5,
+                    boundedBy: mapInstanceRef.current.getBounds(),
+                    strictBounds: false,
+                });
+
+                const suggestions: any[] = [];
+                res.geoObjects.each((obj: any) => {
+                    suggestions.push({
+                        name: obj.getAddressLine(),
+                        coords: obj.geometry.getCoordinates(),
+                    });
+                });
+                setAddressSuggestions(suggestions);
+            } catch {
+                setAddressSuggestions([]);
+            } finally {
+                setIsSearchingAddress(false);
+            }
+        }, 400);
+    };
+
+    const selectSuggestion = (suggestion: { name: string; coords: number[] }) => {
+        const ymaps = (window as any).ymaps;
+        const map = mapInstanceRef.current;
+        if (!ymaps || !map) return;
+
+        map.setCenter(suggestion.coords, 15, { duration: 400 });
+        updateMarker(suggestion.coords, ymaps, map);
+        setAddressSearchQuery(suggestion.name);
+        setValue("address", suggestion.name, { shouldValidate: true });
+        setAddressSuggestions([]);
+    };
+
+    // Directors
+    const { data: directors, isLoading: isDirectorsLoading } = useQuery({
+        queryKey: ["directors-list"],
+        queryFn: async () => {
+            const res = await API.get("/api/v1/super-admin/directors/");
+            return res?.data?.results || res?.data || [];
+        },
+    });
+
+    const filteredDirectors = Array.isArray(directors)
+        ? directors.filter((dir: any) => {
+            const nameToSearch = (dir.full_name || dir.name || "").toLowerCase();
+            return nameToSearch.includes(searchTerm.toLowerCase());
+        })
+        : [];
 
     const { mutate: addCenter, isPending } = useMutation({
         mutationFn: async (body: FormData) => {
@@ -102,20 +273,16 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
             formData.append("director", body.director);
             formData.append("status", body.status);
             formData.append("subscription_expires", body.subscription_expires);
+            formData.append("latitude", body.latitude);
+            formData.append("longitude", body.longitude);
 
             if (selectedFile) {
                 formData.append("logo", selectedFile);
             }
 
-            const res = await API.post(
-                "/api/v1/super-admin/centers/",
-                formData,
-                {
-                    headers: {
-                        "Content-Type": "multipart/form-data",
-                    },
-                }
-            );
+            const res = await API.post("/api/v1/super-admin/centers/", formData, {
+                headers: { "Content-Type": "multipart/form-data" },
+            });
             return res.data;
         },
         onSuccess: (data) => {
@@ -126,21 +293,19 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
             setSelectedFile(null);
             setSelectedDirectorName("");
             setSearchTerm("");
-
-            queryClient.invalidateQueries({
-                queryKey: ["learning-centers"],
-            });
+            setCoords(null);
+            setAddressSearchQuery("");
+            queryClient.invalidateQueries({ queryKey: ["learning-centers"] });
             onClose?.();
         },
         onError: (error: any) => {
             const responseData = error?.response?.data;
-
-            if (responseData && typeof responseData === 'object') {
+            if (responseData && typeof responseData === "object") {
                 Object.keys(responseData).forEach((key) => {
                     if (key in schema.fields) {
                         setError(key as any, {
                             type: "manual",
-                            message: responseData[key][0]
+                            message: responseData[key][0],
                         });
                     } else {
                         toast.error(`${key}: ${responseData[key][0]}`);
@@ -149,29 +314,24 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
             } else {
                 toast.error("Xatolik yuz berdi, qaytadan urinib ko'ring");
             }
-        }
+        },
     });
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-
         if (file.size > 2 * 1024 * 1024) {
             toast.error("Rasm hajmi 2MB dan oshmasligi kerak!");
             return;
         }
-
         setSelectedFile(file);
-        const previewUrl = URL.createObjectURL(file);
-        setLogoPreview(previewUrl);
+        setLogoPreview(URL.createObjectURL(file));
     };
 
     const clearLogo = () => {
         setSelectedFile(null);
         setLogoPreview("");
-        if (fileInputRef.current) {
-            fileInputRef.current.value = "";
-        }
+        if (fileInputRef.current) fileInputRef.current.value = "";
     };
 
     const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -179,8 +339,7 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
         const withPrefix = raw.startsWith("998") ? raw : "998" + raw.replace(/^998/, "");
         const local = withPrefix.slice(3, 12);
         setPhoneDisplay(formatUzPhone(local));
-        const full = "998" + local;
-        setValue("phone", full, { shouldValidate: true });
+        setValue("phone", "998" + local, { shouldValidate: true });
     };
 
     const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -194,27 +353,36 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
         setValue("slug", generatedSlug, { shouldValidate: true });
     };
 
-    // Direktorlarni qidiruv bo'yicha filterlash
-    const filteredDirectors = Array.isArray(directors)
-        ? directors.filter((dir: any) => {
-            const nameToSearch = (dir.full_name || dir.name || "").toLowerCase();
-            return nameToSearch.includes(searchTerm.toLowerCase());
-        })
-        : [];
-
     const onSubmit = (data: FormData) => {
         addCenter(data);
     };
 
+    const inputCls = (hasError?: boolean) =>
+        `border rounded-lg w-full h-[40px] px-3 text-[14px] outline-none transition-all bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 ${hasError
+            ? "border-red-300 dark:border-red-800 bg-red-50/10"
+            : "border-slate-200 dark:border-slate-700 focus:border-indigo-400 dark:focus:border-indigo-600"
+        }`;
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className={`fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity duration-500 ${isMounted ? "opacity-100" : "opacity-0"}`} onClick={onClose} />
+            <div
+                className={`fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity duration-500 ${isMounted ? "opacity-100" : "opacity-0"}`}
+                onClick={onClose}
+            />
 
-            <div className={`bg-white dark:bg-slate-900 p-6 rounded-xl max-w-xl w-full max-h-[90vh] overflow-y-auto relative z-10 shadow-2xl border border-slate-100 dark:border-slate-800 transform transition-all duration-500 ease-out ${isMounted ? "opacity-100 translate-y-0 scale-100" : "opacity-0 -translate-y-12 scale-95"}`}>
-
+            <div
+                className={`bg-white dark:bg-slate-900 p-6 rounded-xl max-w-xl w-full max-h-[90vh] overflow-y-auto relative z-10 shadow-2xl border border-slate-100 dark:border-slate-800 transform transition-all duration-500 ease-out ${isMounted ? "opacity-100 translate-y-0 scale-100" : "opacity-0 -translate-y-12 scale-95"
+                    }`}
+            >
                 {onClose && (
-                    <button type="button" onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors">
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors"
+                    >
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
                     </button>
                 )}
 
@@ -232,17 +400,22 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="text-[14px] text-slate-600 dark:text-slate-300 mb-1 block font-semibold">{t("centers.center_name")}</label>
-                            <input {...register("name")} type="text" onChange={handleNameChange} placeholder="E.g., Najot Ta'lim"
-                                className={`border rounded-lg w-full h-[40px] px-3 text-[14px] outline-none transition-all bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500
-                                ${errors.name ? "border-red-300 dark:border-red-800 bg-red-50/10" : "border-slate-200 dark:border-slate-700"}`}
+                            <input
+                                {...register("name")}
+                                type="text"
+                                onChange={handleNameChange}
+                                placeholder="E.g., Najot Ta'lim"
+                                className={inputCls(!!errors.name)}
                             />
                             {errors.name && <p className="text-red-400 text-[11px] mt-1">{errors.name.message}</p>}
                         </div>
                         <div>
                             <label className="text-[14px] text-slate-600 dark:text-slate-300 mb-1 block font-semibold">{t("centers.slug")}</label>
-                            <input {...register("slug")} type="text" placeholder="najot-talim"
-                                className={`border rounded-lg w-full h-[40px] px-3 text-[14px] outline-none transition-all bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500
-                                ${errors.slug ? "border-red-300 dark:border-red-800 bg-red-50/10" : "border-slate-200 dark:border-slate-700"}`}
+                            <input
+                                {...register("slug")}
+                                type="text"
+                                placeholder="najot-talim"
+                                className={inputCls(!!errors.slug)}
                             />
                             {errors.slug && <p className="text-red-400 text-[11px] mt-1">{errors.slug.message}</p>}
                         </div>
@@ -253,12 +426,18 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
                         <div className="flex items-center justify-between mb-1.5">
                             <label className="text-[14px] text-slate-600 dark:text-slate-300 font-semibold">{t("centers.logo")}</label>
                             <div className="flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-400">
-                                <button type="button" onClick={() => setLogoMode("upload")}
-                                    className={`flex items-center gap-1 px-2.5 py-1 rounded-md transition-all cursor-pointer ${logoMode === "upload" ? "bg-white dark:bg-slate-700 text-indigo-600 shadow-xs" : "hover:text-slate-900 dark:hover:text-slate-200"}`}>
+                                <button
+                                    type="button"
+                                    onClick={() => setLogoMode("upload")}
+                                    className={`flex items-center gap-1 px-2.5 py-1 rounded-md transition-all cursor-pointer ${logoMode === "upload" ? "bg-white dark:bg-slate-700 text-indigo-600 shadow-xs" : "hover:text-slate-900 dark:hover:text-slate-200"}`}
+                                >
                                     <Upload className="w-3 h-3" /> {t("directors.upload")}
                                 </button>
-                                <button type="button" onClick={() => setLogoMode("link")}
-                                    className={`flex items-center gap-1 px-2.5 py-1 rounded-md transition-all cursor-pointer ${logoMode === "link" ? "bg-white dark:bg-slate-700 text-indigo-600 shadow-xs" : "hover:text-slate-900 dark:hover:text-slate-200"}`}>
+                                <button
+                                    type="button"
+                                    onClick={() => setLogoMode("link")}
+                                    className={`flex items-center gap-1 px-2.5 py-1 rounded-md transition-all cursor-pointer ${logoMode === "link" ? "bg-white dark:bg-slate-700 text-indigo-600 shadow-xs" : "hover:text-slate-900 dark:hover:text-slate-200"}`}
+                                >
                                     <Link className="w-3 h-3" /> {t("directors.url_link")}
                                 </button>
                             </div>
@@ -269,7 +448,11 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
                                 {logoPreview ? (
                                     <>
                                         <img src={logoPreview} alt="Logo preview" className="w-full h-full object-cover" />
-                                        <button type="button" onClick={clearLogo} className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white rounded-lg cursor-pointer">
+                                        <button
+                                            type="button"
+                                            onClick={clearLogo}
+                                            className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white rounded-lg cursor-pointer"
+                                        >
                                             <X className="w-4 h-4" />
                                         </button>
                                     </>
@@ -281,14 +464,27 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
                             <div className="w-full">
                                 {logoMode === "upload" ? (
                                     <>
-                                        <input ref={fileInputRef} id="logo-file-input" type="file" accept="image/png,image/jpeg,image/jpg,image/webp" onChange={handleFileChange} className="hidden" />
-                                        <label htmlFor="logo-file-input" className="inline-flex items-center gap-2 px-4 h-[38px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all cursor-pointer">
+                                        <input
+                                            ref={fileInputRef}
+                                            id="logo-file-input"
+                                            type="file"
+                                            accept="image/png,image/jpeg,image/jpg,image/webp"
+                                            onChange={handleFileChange}
+                                            className="hidden"
+                                        />
+                                        <label
+                                            htmlFor="logo-file-input"
+                                            className="inline-flex items-center gap-2 px-4 h-[38px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all cursor-pointer"
+                                        >
                                             <Upload className="w-3.5 h-3.5" /> {t("centers.choose_image")}
                                         </label>
                                         <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">{t("centers.image_hint")}</p>
                                     </>
                                 ) : (
-                                    <input type="url" placeholder="https://example.com/logo.png" onChange={(e) => setLogoPreview(e.target.value)}
+                                    <input
+                                        type="url"
+                                        placeholder="https://example.com/logo.png"
+                                        onChange={(e) => setLogoPreview(e.target.value)}
                                         className="border border-slate-200 dark:border-slate-700 rounded-lg w-full h-[38px] px-3 text-xs outline-none bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-indigo-500 transition-colors"
                                     />
                                 )}
@@ -323,9 +519,10 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
                                         className="w-full bg-transparent text-xs outline-none h-6 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                                         autoFocus
                                     />
-                                    {searchTerm && <X onClick={() => setSearchTerm("")} className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer" />}
+                                    {searchTerm && (
+                                        <X onClick={() => setSearchTerm("")} className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer" />
+                                    )}
                                 </div>
-
                                 <div className="overflow-y-auto flex-1 max-h-[160px]">
                                     {filteredDirectors.length > 0 ? (
                                         filteredDirectors.map((dir: any) => {
@@ -366,39 +563,154 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
                                     <span className="text-base leading-none">🇺🇿</span>
                                     <span className="text-sm font-semibold text-slate-900 dark:text-slate-300">+998</span>
                                 </div>
-                                <input type="tel" value={phoneDisplay} onChange={handlePhoneChange} placeholder="90-123-45-67"
-                                    className={`border rounded-lg w-full h-[40px] pl-[90px] pr-[10px] text-[14px] outline-none transition-all bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500
-                                    ${errors.phone ? "border-red-300 dark:border-red-800 bg-red-50/10" : "border-slate-200 dark:border-slate-700"}`}
+                                <input
+                                    type="tel"
+                                    value={phoneDisplay}
+                                    onChange={handlePhoneChange}
+                                    placeholder="90-123-45-67"
+                                    className={`border rounded-lg w-full h-[40px] pl-[90px] pr-[10px] text-[14px] outline-none transition-all bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 ${errors.phone ? "border-red-300 dark:border-red-800 bg-red-50/10" : "border-slate-200 dark:border-slate-700"
+                                        }`}
                                 />
                             </div>
                             {errors.phone && <p className="text-red-400 text-[11px] mt-1 ml-2">{errors.phone.message}</p>}
                         </div>
                         <div>
                             <label className="text-[14px] text-slate-600 dark:text-slate-300 mb-1 block font-semibold">{t("directors.email")}</label>
-                            <input {...register("email")} type="email" placeholder="center@example.com"
-                                className={`border rounded-lg w-full h-[40px] px-3 text-[14px] outline-none transition-all bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500
-                                ${errors.email ? "border-red-300 dark:border-red-800 bg-red-50/10" : "border-slate-200 dark:border-slate-700"}`}
+                            <input
+                                {...register("email")}
+                                type="email"
+                                placeholder="center@example.com"
+                                className={inputCls(!!errors.email)}
                             />
                             {errors.email && <p className="text-red-400 text-[11px] mt-1">{errors.email.message}</p>}
                         </div>
                     </div>
 
-                    {/* Address */}
+                    {/* ═══════════════════════ YANDEX MAP ═══════════════════════ */}
                     <div>
-                        <label className="text-[14px] text-slate-600 dark:text-slate-300 mb-1 block font-semibold">{t("centers.address")}</label>
-                        <input {...register("address")} type="text" placeholder="Toshkent sh., Chilonzor t."
-                            className={`border rounded-lg w-full h-[40px] px-3 text-[14px] outline-none transition-all bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500
-                            ${errors.address ? "border-red-300 dark:border-red-800 bg-red-50/10" : "border-slate-200 dark:border-slate-700"}`}
-                        />
-                        {errors.address && <p className="text-red-400 text-[11px] mt-1">{errors.address.message}</p>}
+                        <label className="text-[14px] text-slate-600 dark:text-slate-300 mb-1 font-semibold flex items-center gap-1.5">
+                            <MapPin className="w-3.5 h-3.5 text-indigo-500" />
+                            {t("centers.location") || "Joylashuv"}
+                        </label>
+
+                        {/* Address search */}
+                        <div className="relative mb-2" ref={suggestionsRef}>
+                            <div className="relative flex items-center">
+                                <Search className="absolute left-3 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                                <input
+                                    type="text"
+                                    value={addressSearchQuery}
+                                    onChange={(e) => handleAddressSearch(e.target.value)}
+                                    placeholder={t("centers.address_placeholder") || "Manzilni kiriting yoki xaritadan tanlang..."}
+                                    className={`border rounded-lg w-full h-[40px] pl-9 pr-9 text-[14px] outline-none transition-all bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 ${errors.address
+                                        ? "border-red-300 dark:border-red-800"
+                                        : "border-slate-200 dark:border-slate-700 focus:border-indigo-400 dark:focus:border-indigo-600"
+                                        }`}
+                                />
+                                {isSearchingAddress && (
+                                    <Loader2 className="absolute right-3 w-3.5 h-3.5 text-indigo-400 animate-spin" />
+                                )}
+                                {!isSearchingAddress && addressSearchQuery && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setAddressSearchQuery("");
+                                            setValue("address", "", { shouldValidate: true });
+                                            setAddressSuggestions([]);
+                                        }}
+                                        className="absolute right-3 text-slate-400 hover:text-slate-600 cursor-pointer"
+                                    >
+                                        <X className="w-3.5 h-3.5" />
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* Suggestions */}
+                            {addressSuggestions.length > 0 && (
+                                <div className="absolute left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 overflow-hidden">
+                                    {addressSuggestions.map((s, i) => (
+                                        <div
+                                            key={i}
+                                            onClick={() => selectSuggestion(s)}
+                                            className="flex items-start gap-2 px-3 py-2.5 text-[13px] text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 hover:text-indigo-600 cursor-pointer transition-colors border-b border-slate-100 dark:border-slate-700/50 last:border-0"
+                                        >
+                                            <MapPin className="w-3.5 h-3.5 mt-0.5 text-indigo-400 shrink-0" />
+                                            <span>{s.name}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {errors.address && <p className="text-red-400 text-[11px] mb-1.5">{errors.address.message}</p>}
+
+                        {/* Map */}
+                        <div className="relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700">
+                            {mapLoading && (
+                                <div className="absolute inset-0 z-10 bg-slate-100 dark:bg-slate-800 flex flex-col items-center justify-center gap-2">
+                                    <Loader2 className="w-6 h-6 text-indigo-500 animate-spin" />
+                                    <span className="text-xs text-slate-500 dark:text-slate-400">Xarita yuklanmoqda...</span>
+                                </div>
+                            )}
+                            {mapError && (
+                                <div className="absolute inset-0 z-10 bg-slate-100 dark:bg-slate-800 flex flex-col items-center justify-center gap-2">
+                                    <MapPin className="w-6 h-6 text-red-400" />
+                                    <span className="text-xs text-slate-500 dark:text-slate-400">Xarita yuklanmadi</span>
+                                </div>
+                            )}
+                            {!mapLoading && !mapError && !coords && (
+                                <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 bg-white/90 dark:bg-slate-900/90 text-slate-600 dark:text-slate-300 text-[11px] font-medium px-3 py-1.5 rounded-full shadow-md border border-slate-200 dark:border-slate-700 whitespace-nowrap pointer-events-none backdrop-blur-sm">
+                                    📍 Joylashuvni belgilash uchun xaritaga bosing
+                                </div>
+                            )}
+                            <div ref={mapContainerRef} className="w-full h-[220px]" />
+                        </div>
+
+                        {/* Coords badge */}
+                        {coords && (
+                            <div className="mt-2 flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 bg-indigo-50/60 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40 rounded-lg px-3 py-2">
+                                <MapPin className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                                <span>
+                                    <span className="font-semibold text-indigo-600 dark:text-indigo-400">Lat:</span> {coords.lat}
+                                    <span className="mx-2 text-slate-300 dark:text-slate-600">|</span>
+                                    <span className="font-semibold text-indigo-600 dark:text-indigo-400">Lng:</span> {coords.lng}
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (placemarkRef.current && mapInstanceRef.current) {
+                                            mapInstanceRef.current.geoObjects.remove(placemarkRef.current);
+                                            placemarkRef.current = null;
+                                        }
+                                        setCoords(null);
+                                        setValue("latitude", "");
+                                        setValue("longitude", "");
+                                    }}
+                                    className="ml-auto text-slate-400 hover:text-red-400 cursor-pointer transition-colors"
+                                >
+                                    <X className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
+                        )}
+
+                        {(errors.latitude || errors.longitude) && (
+                            <p className="text-red-400 text-[11px] mt-1">
+                                {errors.latitude?.message || errors.longitude?.message}
+                            </p>
+                        )}
+
+                        <input type="hidden" {...register("latitude")} />
+                        <input type="hidden" {...register("longitude")} />
                     </div>
 
                     {/* Status & Subscription */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="text-[14px] text-slate-600 dark:text-slate-300 mb-1 block font-semibold">{t("centers.col_status")}</label>
-                            <select {...register("status")}
-                                className="border border-slate-200 dark:border-slate-700 rounded-lg w-full h-[40px] px-3 text-[14px] outline-none bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 transition-colors cursor-pointer">
+                            <select
+                                {...register("status")}
+                                className="border border-slate-200 dark:border-slate-700 rounded-lg w-full h-[40px] px-3 text-[14px] outline-none bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 transition-colors cursor-pointer"
+                            >
                                 <option value="active">{t("centers.status.active")}</option>
                                 <option value="pending">{t("centers.status.pending")}</option>
                                 <option value="inactive">{t("centers.status.inactive")}</option>
@@ -406,16 +718,22 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
                         </div>
                         <div>
                             <label className="text-[14px] text-slate-600 dark:text-slate-300 mb-1 block font-semibold">{t("centers.subscription_expires")}</label>
-                            <input {...register("subscription_expires")} type="date"
-                                className={`border rounded-lg w-full h-[40px] px-3 text-[14px] outline-none transition-all bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100
-                                ${errors.subscription_expires ? "border-red-300 dark:border-red-800" : "border-slate-200 dark:border-slate-700"}`}
+                            <input
+                                {...register("subscription_expires")}
+                                type="date"
+                                className={`border rounded-lg w-full h-[40px] px-3 text-[14px] outline-none transition-all bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 ${errors.subscription_expires ? "border-red-300 dark:border-red-800" : "border-slate-200 dark:border-slate-700"
+                                    }`}
                             />
                             {errors.subscription_expires && <p className="text-red-400 text-[11px] mt-1">{errors.subscription_expires.message}</p>}
                         </div>
                     </div>
 
-                    <button type="submit" disabled={isPending}
-                        className="w-full h-[40px] mt-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-lg text-[14px] font-bold transition-colors cursor-pointer flex items-center justify-center">
+                    <button
+                        type="submit"
+                        disabled={isPending}
+                        className="w-full h-[40px] mt-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-lg text-[14px] font-bold transition-colors cursor-pointer flex items-center justify-center gap-2"
+                    >
+                        {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
                         {isPending ? t("centers.creating") : t("centers.create_btn")}
                     </button>
                 </form>
