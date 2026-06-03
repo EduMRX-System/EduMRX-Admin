@@ -12,6 +12,7 @@ import AddDirectorModal from "@/components/sections/director/addDirectorModal";
 import EditDirectorModal from "@/components/sections/director/EditDirectorModal";
 import DeleteDirectorModal from "@/components/sections/director/DeleteDirectorModal";
 import { IAPIResponse, IDirector } from "@/types";
+import { t } from "i18next";
 
 export default function DirectorsList() {
     const [page, setPage] = useState(1);
@@ -23,10 +24,10 @@ export default function DirectorsList() {
     const [editTarget, setEditTarget] = useState<IDirector | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
-    // Search Debounce mexanizmi
     useEffect(() => {
         const handler = setTimeout(() => {
-            setDebouncedSearch(search);
+            const cleaned = search.trim();
+            setDebouncedSearch(cleaned === "" ? "" : search);
             setPage(1);
         }, 500);
         return () => clearTimeout(handler);
@@ -37,7 +38,8 @@ export default function DirectorsList() {
         queryFn: async () => {
             const res = await API.get(`/api/v1/super-admin/directors/?page=${page}&page_size=${pageSize}&search=${debouncedSearch}`);
             return res?.data;
-        }
+        },
+        enabled: debouncedSearch.trim().length > 0 || debouncedSearch === ""
     });
 
     const directors = data?.results || [];
@@ -56,8 +58,8 @@ export default function DirectorsList() {
         <div className="w-full space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <Title text="Directors Management" />
-                    <Text text="Tizimdagi barcha o'quv markazi direktorlarini boshqarish." />
+                    <Title text={t("directors.title")} />
+                    <Text text={t("directors.desc")} />
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -65,52 +67,73 @@ export default function DirectorsList() {
                         onClick={() => setIsAddOpen(true)}
                         className="h-10 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-lg flex items-center gap-2 transition-colors"
                     >
-                        <Plus className="w-4 h-4" /> Add Director
+                        <Plus className="w-4 h-4" /> {t("directors.add")}
                     </button>
                 </div>
             </div>
 
+            {/* QIDIRUV */}
             <div className="relative">
                 <input
                     type="text"
-                    placeholder="Qidirish..."
+                    placeholder={t("common.search")}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="h-10 pl-9 pr-4 text-sm border border-slate-200 rounded-lg outline-none focus:border-indigo-500 w-64"
+                    className="h-10 pl-9 pr-4 text-sm border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-indigo-500 w-64 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-colors"
                 />
                 <Search className="absolute left-2.5 top-3 w-4 h-4 text-slate-400" />
             </div>
 
-            {isLoading && <div className="py-20 text-center"><Loader2 className="w-8 h-8 mx-auto text-indigo-600 animate-spin" /></div>}
-            {isError && <div className="py-20 text-center text-red-500"><AlertCircle className="mx-auto mb-2" /> Xatolik yuz berdi.</div>}
+            {/* LOADING */}
+            {isLoading && (
+                <div className="py-20 text-center">
+                    <Loader2 className="w-8 h-8 mx-auto text-indigo-600 animate-spin" />
+                </div>
+            )}
 
+            {/* ERROR */}
+            {isError && (
+                <div className="py-20 text-center text-red-500">
+                    <AlertCircle className="mx-auto mb-2" /> {t("common.error")}
+                </div>
+            )}
+
+            {/* BO'SH HOLAT */}
             {!isLoading && !isError && directors.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border border-dashed border-slate-300 text-center">
+                <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-slate-900 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-center transition-colors">
                     <User className="w-10 h-10 text-slate-400 mb-4" />
-                    <h3 className="text-base font-semibold text-slate-900">
-                        {search ? "Natija topilmadi" : "Direktorlar topilmadi"}
+                    <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                        {search ? t("common.no_results") : t("directors.empty")}
                     </h3>
                     {search ? (
-                        <button onClick={() => setSearch("")} className="text-indigo-600 hover:underline mt-2">Qidiruvni tozalash</button>
+                        <button
+                            onClick={() => setSearch("")}
+                            className="text-indigo-600 hover:underline mt-2 text-sm"
+                        >
+                            {t("common.clear_search")}
+                        </button>
                     ) : (
-                        <p className="text-xs text-slate-500 mt-1">Hozircha tizimda direktor mavjud emas.</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                            {t("directors.empty_desc")}
+                        </p>
                     )}
                 </div>
             )}
 
+            {/* TABLE */}
             {directors.length > 0 && (
-                <div className="bg-white rounded-xl shadow-xs border border-slate-100 overflow-hidden">
+                <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xs border border-slate-100 dark:border-slate-800 overflow-hidden transition-colors">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                             <thead>
-                                <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 text-[11px] font-bold uppercase">
-                                    <th className="py-3 px-5">Director Details</th>
-                                    <th className="py-3 px-5">Contact</th>
-                                    <th className="py-3 px-5">Created At</th>
-                                    <th className="py-3 px-5 text-right">Actions</th>
+                                <tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-[11px] font-bold uppercase">
+                                    <th className="py-3 px-5">{t("directors.col_details")}</th>
+                                    <th className="py-3 px-5">{t("directors.col_contact")}</th>
+                                    <th className="py-3 px-5">{t("directors.col_created")}</th>
+                                    <th className="py-3 px-5 text-right">{t("directors.col_actions")}</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100 text-sm">
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
                                 {directors.map((director) => (
                                     <DirectorItem
                                         key={director.id}
@@ -125,8 +148,7 @@ export default function DirectorsList() {
                         </table>
                     </div>
 
-                    {/* Pagination Control */}
-                    <div className="p-4">
+                    <div className="p-4 border-t border-slate-100 dark:border-slate-800">
                         <PaginationControl
                             totalCount={totalCount}
                             page={page}
@@ -139,7 +161,6 @@ export default function DirectorsList() {
                 </div>
             )}
 
-            {/* Modallar */}
             {isAddOpen && <AddDirectorModal onClose={() => setIsAddOpen(false)} />}
             {editTarget && <EditDirectorModal director={editTarget} onClose={() => setEditTarget(null)} />}
             {deleteTarget && <DeleteDirectorModal id={deleteTarget.id} name={deleteTarget.name} onClose={() => setDeleteTarget(null)} />}

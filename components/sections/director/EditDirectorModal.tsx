@@ -12,6 +12,7 @@ import { toast } from "react-toastify";
 import { PhoneInput } from "@/components/ui/PhoneInput";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { IDirector } from "./DirectorItem";
+import { t } from "i18next";
 
 const schema = yup.object({
     first_name: yup.string().required("Ism kiritilishi shart"),
@@ -68,20 +69,32 @@ export default function EditDirectorModal({ director, onClose }: { director: IDi
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
-            <div className={`bg-white p-6 rounded-xl max-w-xl w-full relative z-10 transition-all ${isMounted ? "opacity-100" : "opacity-0"}`}>
-                <button type="button" onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+            <div className={`bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 rounded-xl max-w-xl w-full relative z-10 shadow-2xl transition-all ${isMounted ? "opacity-100" : "opacity-0"}`}>
+                <button type="button" onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                    <X className="w-5 h-5" />
+                </button>
 
-                <h3 className="text-lg font-semibold mb-4">Edit Director Details</h3>
+                <h3 className="text-lg font-semibold mb-4 text-slate-900 dark:text-slate-100">
+                    {t("directors.edit_title")}
+                </h3>
 
                 <form onSubmit={handleSubmit((data) => updateDirector(data))} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="text-sm font-semibold">First Name</label>
-                            <input {...register("first_name")} placeholder="E.g., Xusan" className="border outline-none focus:border-indigo-500 w-full h-[40px] border-[#C7C4D8] px-3 rounded-lg" />
+                            <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t("directors.first_name")}</label>
+                            <input
+                                {...register("first_name")}
+                                placeholder="Xusan"
+                                className="mt-1 border outline-none focus:border-indigo-500 w-full h-10 border-slate-200 dark:border-slate-700 px-3 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-colors"
+                            />
                         </div>
                         <div>
-                            <label className="text-sm font-semibold">Last Name</label>
-                            <input {...register("last_name")} placeholder="E.g., Yarashev" className="border outline-none focus:border-indigo-500 w-full border-[#C7C4D8] h-[40px] px-3 rounded-lg" />
+                            <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t("directors.last_name")}</label>
+                            <input
+                                {...register("last_name")}
+                                placeholder="Yarashev"
+                                className="mt-1 border outline-none focus:border-indigo-500 w-full h-10 border-slate-200 dark:border-slate-700 px-3 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-colors"
+                            />
                         </div>
                     </div>
 
@@ -91,8 +104,12 @@ export default function EditDirectorModal({ director, onClose }: { director: IDi
 
                     <PasswordInput register={register("password")} error={errors.password?.message} />
 
-                    <button type="submit" disabled={isPending} className="w-full h-[40px] bg-[#4F46E5] text-white rounded-lg font-bold flex items-center justify-center">
-                        {isPending ? <Loader2 className="animate-spin mr-2" /> : "Save Updates"}
+                    <button
+                        type="submit"
+                        disabled={isPending}
+                        className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold flex items-center justify-center transition-colors disabled:opacity-60"
+                    >
+                        {isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : t("directors.save_btn")}
                     </button>
                 </form>
             </div>

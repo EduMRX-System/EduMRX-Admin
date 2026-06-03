@@ -6,7 +6,8 @@ import Provider from "@/components/Provider";
 import "bootstrap-icons/font/bootstrap-icons.css";
 
 import "leaflet/dist/leaflet.css";
-
+import ThemeInitializer from "@/components/ThemeInitializer";
+import LanguageInitializer from "@/components/LanguageInitializer";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -43,6 +44,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.variable} antialiased`}>
+        <ThemeInitializer />
+        <LanguageInitializer />
         <Provider>{children}</Provider>
       </body>
     </html>

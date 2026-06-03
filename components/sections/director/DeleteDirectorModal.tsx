@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { API } from "@/services/api";
 import { AlertTriangle, Loader2 } from "lucide-react";
 import { toast } from "react-toastify";
+import { t } from "i18next";
 
 interface DeleteProps {
     id: string;
@@ -31,20 +32,33 @@ export default function DeleteDirectorModal({ id, name, onClose }: DeleteProps) 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-fade-in">
             <div className="absolute inset-0" onClick={onClose} />
-            <div className="relative bg-white w-full max-w-sm rounded-xl shadow-xl border border-slate-100 p-6 text-center z-10">
-                <div className="w-12 h-12 rounded-full bg-red-50 border border-red-100 flex items-center justify-center text-red-500 mx-auto mb-4">
+            <div className="relative bg-white dark:bg-slate-900 w-full max-w-sm rounded-xl shadow-xl border border-slate-100 dark:border-slate-800 p-6 text-center z-10 transition-colors">
+                <div className="w-12 h-12 rounded-full bg-red-50 dark:bg-red-950/40 border border-red-100 dark:border-red-900 flex items-center justify-center text-red-500 mx-auto mb-4">
                     <AlertTriangle className="w-6 h-6" />
                 </div>
-                <h3 className="text-base font-bold text-slate-900">Direktorni o'chirish</h3>
-                <p className="text-sm text-slate-500 mt-2">
-                    Rostdan ham <span className="font-semibold text-slate-800">"{name}"</span>ni o'chirmoqchimisiz?
+                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                    {t("directors.delete_title")}
+                </h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
+                    {t("directors.delete_confirm")}{" "}
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">"{name}"</span>
+                    {t("directors.delete_confirm_end")}
                 </p>
                 <div className="flex items-center gap-3 mt-6">
-                    <button type="button" onClick={onClose} className="flex-1 h-10 border border-slate-200 bg-white text-slate-700 text-sm font-semibold rounded-lg cursor-pointer">
-                        Bekor qilish
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="flex-1 h-10 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm font-semibold rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                    >
+                        {t("common.cancel")}
                     </button>
-                    <button type="button" onClick={() => deleteDirector()} disabled={isPending} className="flex-1 h-10 bg-red-600 text-white text-sm font-semibold rounded-lg disabled:bg-red-400 cursor-pointer">
-                        {isPending ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "O'chirilsin"}
+                    <button
+                        type="button"
+                        onClick={() => deleteDirector()}
+                        disabled={isPending}
+                        className="flex-1 h-10 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg disabled:opacity-60 transition-colors cursor-pointer"
+                    >
+                        {isPending ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : t("directors.delete_btn")}
                     </button>
                 </div>
             </div>

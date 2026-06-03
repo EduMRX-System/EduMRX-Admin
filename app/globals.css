@@ -1,5 +1,18 @@
 @import "tailwindcss";
 
-body {
-    color: black;
+@variant dark (&:where(.dark, .dark *));
+
+@theme {
+    --color-primary: #4f46e5;
+    --color-primary-dark: #3525cd;
+}
+
+.scroll-hidden {
+    overflow: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.scroll-hidden::-webkit-scrollbar {
+    display: none;
 }
