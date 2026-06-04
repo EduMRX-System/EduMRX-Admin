@@ -64,6 +64,25 @@ export default function AddDirectorModal({ onClose }: { onClose?: () => void }) 
             toast.success("Yangi direktor muvaffaqiyatli qo'shildi!");
             queryClient.invalidateQueries({ queryKey: ["directors"] });
             onClose?.();
+        },
+        onError: (error: any) => {
+            const responseData = error?.response?.data;
+
+            if (responseData && typeof responseData === 'object') {
+                Object.keys(responseData).forEach((key) => {
+                    const fieldErrors = responseData[key];
+
+                    if (Array.isArray(fieldErrors)) {
+                        fieldErrors.forEach((msg) => {
+                            toast.error(`${msg}`);
+                        });
+                    } else if (typeof fieldErrors === 'string') {
+                        toast.error(fieldErrors);
+                    }
+                });
+            } else {
+                toast.error("Tizimda xatolik yuz berdi. Qaytadan urinib ko'ring.");
+            }
         }
     });
 

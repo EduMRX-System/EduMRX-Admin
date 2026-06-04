@@ -1,8 +1,18 @@
 import type { NextConfig } from "next";
-/** @type {import('next').NextConfig} */
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
+
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "gkwfbttkyjdxselgxbyz.supabase.co",
+        port: "",
+        pathname: "/**",
+      },
+    ],
+  },
 
   async rewrites() {
     return [

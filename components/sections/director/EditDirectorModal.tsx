@@ -20,7 +20,11 @@ const schema = yup.object({
     phone: yup.string().required("Telefon raqami majburiy")
         .test("len", "Raqamni to'liq kiriting", val => val?.replace(/\D/g, "").length === 12),
     email: yup.string().email("Xato email formati").required("Email kiritilishi shart"),
-    password: yup.string().required("Tahrirlash uchun yangi parol kiritishingiz shart").min(6, "Parol kamida 6 ta belgi bo'lishi kerak")
+    password: yup.string()
+        .transform((value) => (value === "" ? undefined : value))
+        .nullable()
+        .optional()
+        .test("len", "Parol kamida 6 ta belgi bo'lishi kerak", val => !val || val.length >= 6)
 }).required();
 
 type FormData = yup.InferType<typeof schema>;
@@ -29,8 +33,11 @@ export default function EditDirectorModal({ director, onClose }: { director: IDi
     const queryClient = useQueryClient();
     const [isMounted, setIsMounted] = useState(false);
 
-    const { register, handleSubmit, control, setValue, setError, formState: { errors } } = useForm<FormData>({
-        resolver: yupResolver(schema)
+    const { register, handleSubmit, control, setValue, setError, formState: { errors } } = useForm({
+        resolver: yupResolver(schema),
+        defaultValues: {
+            password: ""
+        }
     });
 
     useEffect(() => {
@@ -39,13 +46,26 @@ export default function EditDirectorModal({ director, onClose }: { director: IDi
             const nameParts = director.full_name?.trim().split(" ") || [];
             setValue("first_name", nameParts[0] || "");
             setValue("last_name", nameParts.slice(1).join(" ") || "");
-            setValue("email", director.email);
+            setValue("email", director.email || "");
             setValue("phone", director.phone);
         }
     }, [director, setValue]);
 
     const { mutate: updateDirector, isPending } = useMutation({
-        mutationFn: (body: FormData) => API.put(`/api/v1/super-admin/directors/${director.id}/`, { ...body, phone: body.phone.replace(/\D/g, "") }),
+        mutationFn: (body: FormData) => {
+            const requestData: any = {
+                first_name: body.first_name,
+                last_name: body.last_name,
+                email: body.email,
+                phone: body.phone.replace(/\D/g, "")
+            };
+
+            if (body.password) {
+                requestData.password = body.password;
+            }
+
+            return API.put(`/api/v1/super-admin/directors/${director.id}/`, requestData);
+        },
         onSuccess: () => {
             toast.success("Director muvaffaqiyatli yangilandi!");
             queryClient.invalidateQueries({ queryKey: ["directors"] });
@@ -53,15 +73,24 @@ export default function EditDirectorModal({ director, onClose }: { director: IDi
         },
         onError: (err: any) => {
             const serverErrors = err?.response?.data;
+
             if (serverErrors && typeof serverErrors === "object") {
-                const firstKey = Object.keys(serverErrors)[0];
-                const errorValue = serverErrors[firstKey];
-                if (Array.isArray(errorValue)) {
-                    toast.error(errorValue[0]);
-                    setError(firstKey as any, { type: "server", message: errorValue[0] });
-                }
+                Object.keys(serverErrors).forEach((key) => {
+                    const errorValue = serverErrors[key];
+
+                    const errorMessage = Array.isArray(errorValue) ? errorValue[0] : errorValue;
+
+                    if (errorMessage) {
+                        toast.error(errorMessage);
+
+                        setError(key as any, {
+                            type: "server",
+                            message: errorMessage
+                        });
+                    }
+                });
             } else {
-                toast.error("Xatolik yuz berdi.");
+                toast.error("Xatolik yuz berdi. Qaytadan urinib ko'ring.");
             }
         }
     });
@@ -87,6 +116,7 @@ export default function EditDirectorModal({ director, onClose }: { director: IDi
                                 placeholder="Xusan"
                                 className="mt-1 border outline-none focus:border-indigo-500 w-full h-10 border-slate-200 dark:border-slate-700 px-3 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-colors"
                             />
+                            {errors.first_name && <p className="text-red-500 text-xs mt-1">{errors.first_name.message}</p>}
                         </div>
                         <div>
                             <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t("directors.last_name")}</label>
@@ -95,6 +125,7 @@ export default function EditDirectorModal({ director, onClose }: { director: IDi
                                 placeholder="Yarashev"
                                 className="mt-1 border outline-none focus:border-indigo-500 w-full h-10 border-slate-200 dark:border-slate-700 px-3 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-colors"
                             />
+                            {errors.last_name && <p className="text-red-500 text-xs mt-1">{errors.last_name.message}</p>}
                         </div>
                     </div>
 
@@ -102,7 +133,27 @@ export default function EditDirectorModal({ director, onClose }: { director: IDi
                         <PhoneInput value={field.value || ""} onChange={field.onChange} error={errors.phone?.message} />
                     )} />
 
-                    <PasswordInput register={register("password")} error={errors.password?.message} />
+                    <div>
+                        <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t("directors.email")}</label>
+                        <input
+                            {...register("email")}
+                            type="email"
+                            placeholder="xusan@example.com"
+                            className="mt-1 border outline-none focus:border-indigo-500 w-full h-10 border-slate-200 dark:border-slate-700 px-3 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-colors"
+                        />
+                        {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
+                    </div>
+
+                    {/* Parol inputi (Ixtiyoriy ekanligi placeholder orqali bildirilgan) */}
+                    <div>
+                        <PasswordInput
+                            register={register("password")}
+                            error={errors.password?.message}
+                        />
+                        <p className="text-slate-400 dark:text-slate-500 text-[11px] mt-0.5">
+                            * Parolni o'zgartirmoqchi bo'lsangizgina kiriting, aks holda bo'sh qoldiring.
+                        </p>
+                    </div>
 
                     <button
                         type="submit"
