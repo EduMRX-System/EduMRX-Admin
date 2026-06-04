@@ -1,6 +1,7 @@
 "use client";
 
 import { Trash2, Edit3, Mail, Phone, MapPin, Calendar, GraduationCap } from "lucide-react";
+import Image from "next/image";
 
 export interface IStudent {
     id: string;
@@ -48,7 +49,7 @@ export default function StudentItem({
                 <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-full bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/50 flex items-center justify-center font-semibold text-indigo-600 dark:text-indigo-400 shrink-0 uppercase text-xs">
                         {student.avatar ? (
-                            <img src={student.avatar} alt={student.full_name} className="w-full h-full object-cover rounded-full" />
+                            <Image src={student.avatar} alt={student.full_name} className="w-full h-full object-cover rounded-full" />
                         ) : (
                             <span>{initial}</span>
                         )}

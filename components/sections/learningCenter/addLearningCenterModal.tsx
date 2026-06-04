@@ -9,6 +9,7 @@ import { API } from "@/services/api";
 import { Building2, Upload, Link, Image as ImageIcon, X, Search, ChevronDown, MapPin, Loader2 } from "lucide-react";
 import { toast } from "react-toastify";
 import { t } from "i18next";
+import Image from "next/image";
 
 function formatUzPhone(raw: string): string {
     const d = raw.slice(0, 9);
@@ -447,7 +448,7 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
                             <div className="relative w-16 h-16 min-w-16 rounded-lg border border-dashed border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 flex items-center justify-center overflow-hidden group">
                                 {logoPreview ? (
                                     <>
-                                        <img src={logoPreview} alt="Logo preview" className="w-full h-full object-cover" />
+                                        <Image src={logoPreview} alt="Logo preview" className="w-full h-full object-cover" />
                                         <button
                                             type="button"
                                             onClick={clearLogo}

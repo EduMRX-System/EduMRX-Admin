@@ -13,7 +13,7 @@ import {
   Loader2,
   AlertCircle,
   Briefcase,
-  Star
+  Star,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { useState } from "react";
@@ -22,6 +22,7 @@ import EditTeacherModal from "@/components/sections/teachers/EditTeacherModal";
 import DeleteTeacherModal from "@/components/sections/teachers/DeleteTeacherModal"; // Yangi modal
 import Title from "@/components/ui/Title";
 import Text from "@/components/ui/Text";
+import Image from "next/image";
 
 interface Teacher {
   id: string;
@@ -40,7 +41,12 @@ export default function TeachersView() {
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
   const [deletingTeacher, setDeletingTeacher] = useState<Teacher | null>(null);
 
-  const { data: teachers, isLoading, isError, error } = useQuery<Teacher[]>({
+  const {
+    data: teachers,
+    isLoading,
+    isError,
+    error,
+  } = useQuery<Teacher[]>({
     queryKey: ["teachers"],
     queryFn: async () => {
       const res = await API.get("/api/v1/super-admin/teachers/");
@@ -89,14 +95,18 @@ export default function TeachersView() {
       {isLoading && (
         <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border border-slate-100 shadow-sm">
           <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
-          <p className="text-sm text-slate-500 mt-3 font-medium">Loading teachers list...</p>
+          <p className="text-sm text-slate-500 mt-3 font-medium">
+            Loading teachers list...
+          </p>
         </div>
       )}
 
       {isError && (
         <div className="flex flex-col items-center justify-center py-12 px-4 bg-red-50/50 rounded-xl border border-red-100 text-center">
           <AlertCircle className="w-10 h-10 text-red-500 mb-3" />
-          <h3 className="text-base font-semibold text-red-900">Failed to load data</h3>
+          <h3 className="text-base font-semibold text-red-900">
+            Failed to load data
+          </h3>
           <p className="text-sm text-red-600 mt-1 max-w-md">
             {(error as any)?.message || "Connection error with backend."}
           </p>
@@ -108,8 +118,12 @@ export default function TeachersView() {
           <div className="p-3 bg-slate-50 rounded-full text-slate-400 mb-4">
             <GraduationCap className="w-8 h-8" />
           </div>
-          <h3 className="text-base font-semibold text-slate-900">No teachers found</h3>
-          <p className="text-sm text-slate-500 mt-1 max-w-xs">There are no records available. Create the first profile.</p>
+          <h3 className="text-base font-semibold text-slate-900">
+            No teachers found
+          </h3>
+          <p className="text-sm text-slate-500 mt-1 max-w-xs">
+            There are no records available. Create the first profile.
+          </p>
           <button
             onClick={() => setIsAddOpen(true)}
             className="mt-4 inline-flex items-center gap-2 h-9 px-4 bg-white border border-slate-200 text-slate-700 rounded-lg text-xs font-semibold shadow-sm hover:bg-slate-50 transition-all cursor-pointer"
@@ -135,27 +149,41 @@ export default function TeachersView() {
               </thead>
               <tbody className="divide-y divide-slate-100 text-sm text-slate-700">
                 {teachers.map((teacher) => {
-                  const initial = (teacher.full_name || "N").charAt(0).toUpperCase();
+                  const initial = (teacher.full_name || "N")
+                    .charAt(0)
+                    .toUpperCase();
 
                   {
                     console.log(teacher);
                   }
 
-
                   return (
-                    <tr key={teacher.id} className="hover:bg-slate-50/50 transition-colors group">
+                    <tr
+                      key={teacher.id}
+                      className="hover:bg-slate-50/50 transition-colors group"
+                    >
                       <td className="py-4 px-5">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
                             {teacher.avatar ? (
-                              <img src={teacher.avatar} alt={teacher.full_name} className="w-full h-full object-cover" />
+                              <Image
+                                src={teacher.avatar}
+                                alt={teacher.full_name}
+                                className="w-full h-full object-cover"
+                              />
                             ) : (
-                              <span className="font-semibold text-slate-500 text-sm">{initial}</span>
+                              <span className="font-semibold text-slate-500 text-sm">
+                                {initial}
+                              </span>
                             )}
                           </div>
                           <div>
-                            <div className="font-semibold text-slate-900 leading-tight">{teacher.full_name}</div>
-                            <div className="text-[11px] text-slate-400 mt-0.5">ID: {teacher.id.slice(0, 8)}</div>
+                            <div className="font-semibold text-slate-900 leading-tight">
+                              {teacher.full_name}
+                            </div>
+                            <div className="text-[11px] text-slate-400 mt-0.5">
+                              ID: {teacher.id.slice(0, 8)}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -168,7 +196,9 @@ export default function TeachersView() {
                           </div>
                           <div className="flex items-center gap-2 text-slate-600">
                             <Mail className="w-3.5 h-3.5 text-slate-400" />
-                            <span className="truncate max-w-[160px]">{teacher.email}</span>
+                            <span className="truncate max-w-[160px]">
+                              {teacher.email}
+                            </span>
                           </div>
                         </div>
                       </td>
@@ -189,7 +219,9 @@ export default function TeachersView() {
                       <td className="py-4 px-5">
                         <div className="flex items-center gap-1.5 text-xs text-slate-600 max-w-[180px]">
                           <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span className="truncate">{teacher.center_name || "—"}</span>
+                          <span className="truncate">
+                            {teacher.center_name || "—"}
+                          </span>
                         </div>
                       </td>
 
