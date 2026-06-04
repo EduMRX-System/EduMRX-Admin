@@ -24,7 +24,6 @@ export interface IGroupData {
   is_full: boolean;
 }
 
-// @/types/index.ts faylida
 export interface IStudent {
   id: string;
   first_name: string;
@@ -35,10 +34,8 @@ export interface IStudent {
   date_of_birth: string;
   address: string;
   status: "active" | "inactive" | "pending";
-  notes?: string;
-  latitude?: string;
-  longitude?: string;
-  center?: { id: string; name: string };
+  notes: string;
+  center: string;
 }
 
 export interface ILearningCenter {

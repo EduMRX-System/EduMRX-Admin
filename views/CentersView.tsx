@@ -80,7 +80,6 @@ export default function LearningCentersList() {
                 </div>
 
                 <div className="flex items-center gap-3 self-end sm:self-auto">
-                    {/* List / Grid Switcher */}
                     <div className="inline-flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200/60 dark:border-slate-700">
                         <button
                             onClick={() => setViewMode("list")}

@@ -56,7 +56,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   initAuth: async () => {
     if (typeof window === "undefined") return;
 
-    // Katta plyus: Agar allaqachon tekshirilgan bo'lsa, qayta ishga tushmaydi
     if (get().isInitialized) return;
 
     const storedTokens = localStorage.getItem("tokens");
@@ -84,11 +83,28 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isAuthenticated: true,
         isInitialized: true,
       });
-    } catch (error) {
-      console.error("Auth initialization error:", error); // Xatolikni konsolda ko'rish uchun
+    } catch (error: any) {
+      console.error("Auth initialization error:", error);
 
-      // Faqat token eskirgan bo'lsagina o'chirish ma'qul, lekin hozircha xavfsizlik uchun:
-      localStorage.removeItem("tokens");
+      // 1. Agar xatolik tarmoq (Network Error) tufayli bo'lsa (Server o'chiq bo'lsa)
+      // Tokenlarni o'chirmaymiz va cheksiz refresh loopga tushib qolmaslik uchun holatni tugatamiz.
+      if (!error.response) {
+        console.warn(
+          "Backend serverga ulanib bo'lmadi. Tokenlar saqlab qolindi.",
+        );
+        set({
+          isInitialized: true,
+          isAuthenticated: false, // Server o'chiqligi uchun hozircha auth emas
+          user: null,
+        });
+        return;
+      }
+
+      // 2. Agar server 401 yoki 403 (Token xato/eskirgan) qaytargan bo'lsa, shundagina tozalaymiz
+      if (error.response.status === 401 || error.response.status === 403) {
+        localStorage.removeItem("tokens");
+      }
+
       set({
         user: null,
         tokens: null,

@@ -42,7 +42,7 @@ export default function DashboardSection() {
             degree: dashboard?.groups?.active ?? 0,
             color: "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-100 dark:border-emerald-900 text-emerald-600",
             hoverBorder: "hover:border-emerald-300 dark:hover:border-emerald-700",
-            path: "/groups",
+            path: "/",
             extraData: [
                 { key: t("dashboard.general_groups"), value: dashboard?.groups?.active ?? 0 },
                 { key: t("dashboard.bootcamp"), value: "4" },
@@ -58,7 +58,7 @@ export default function DashboardSection() {
                 : "0 UZS",
             color: "bg-amber-50 dark:bg-amber-950/40 border-amber-100 dark:border-amber-900 text-amber-600",
             hoverBorder: "hover:border-amber-300 dark:hover:border-amber-700",
-            path: "/payments",
+            path: "/financial",
             extraData: [
                 { key: t("dashboard.paid_payme"), value: "45%" },
                 { key: t("dashboard.paid_cash"), value: "55%" },
@@ -74,7 +74,7 @@ export default function DashboardSection() {
                 : "0%",
             color: "bg-rose-50 dark:bg-rose-950/40 border-rose-100 dark:border-rose-900 text-rose-600",
             hoverBorder: "hover:border-rose-300 dark:hover:border-rose-700",
-            path: "/attendance",
+            path: "//",
             extraData: [
                 { key: t("dashboard.present"), value: "92%" },
                 { key: t("dashboard.absent"), value: "5%" },

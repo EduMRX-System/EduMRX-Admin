@@ -8,6 +8,30 @@
     "financial": "Moliya",
     "settings": "Sozlamalar"
   },
+  "finance": {
+    "title": "Moliya",
+    "desc": "O'quv markazlari moliyaviy ko'rsatkichlarini monitoring qiling.",
+    "recent_transactions": "Oxirgi Amallar",
+    "financial_transactions": "Moliyaviy tranzaksiyalar",
+    "live": "Jonli",
+    "all_transactions": "Barcha tranzaksiyalar",
+    "table_title": "Daromadlar O'quv Markazlari Kesimida",
+    "table_desc": "Har bir markaz bo'yicha moliyaviy hisobot",
+    "search_placeholder": "Markaz nomi...",
+    "col_center": "O'quv Markazi",
+    "col_director": "Direktor",
+    "col_students": "O'quvchilar",
+    "col_month": "Shu Oy",
+    "col_total": "Umumiy",
+    "details": "Batafsil",
+    "change_filter": "Qidiruv yoki filtrlarni o'zgartiring",
+    "total_centers_prefix": "Jami",
+    "total_centers_suffix": "ta markaz",
+    "total_revenue": "Umumiy daromad:",
+    "chart_title": "Oylik Daromad Trendi",
+    "chart_desc": "Top 5 o'quv markazlari kesimida (mln so'm)",
+    "total_label": "Jami:"
+  },
   "directors": {
     "title": "Direktorlar boshqaruvi",
     "desc": "Tizimdagi barcha o‘quv markaz direktorlarini boshqaring.",
@@ -35,6 +59,7 @@
     "email": "Elektron pochta"
   },
   "common": {
+    "all": "Barchasi",
     "search": "Qidirish...",
     "error": "Xatolik yuz berdi.",
     "no_results": "Natija topilmadi",

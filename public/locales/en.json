@@ -14,6 +14,60 @@
     "financial": "Financial",
     "settings": "Settings"
   },
+  "students": {
+    "title": "Students",
+    "subtitle": "Manage and track student enrollment, performance, and status.",
+    "addBtn": "Add Student",
+    "addBtnShort": "Add Student",
+    "loading": "Loading student list...",
+    "errorTitle": "Error loading data",
+    "emptyTitle": "No students found",
+    "emptySubtitle": "No student information has been entered into the system yet.",
+    "deleteSuccess": "Student successfully deleted",
+    "deleteError": "Error occurred while deleting",
+    "table": {
+      "name": "Student Name",
+      "contact": "Contact Info",
+      "center": "Learning Center",
+      "address": "Location / Address",
+      "dob": "Date of Birth",
+      "actions": "Actions"
+    },
+    "status": {
+      "active": "Active",
+      "frozen": "Frozen",
+      "inactive": "Inactive"
+    },
+    "modal": {
+      "addTitle": "Add New Student",
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "phone": "Phone Number",
+      "password": "Password",
+      "email": "Email Address",
+      "dob": "Date of Birth",
+      "address": "Address",
+      "mapLabel": "Select Location on Yandex Map",
+      "mapHint": "Click on the map — the marker moves smoothly and the address is detected.",
+      "lat": "Map Latitude (Lat)",
+      "lng": "Map Longitude (Lang)",
+      "status": "Status",
+      "learningCenter": "Learning Center",
+      "notes": "Notes (Optional)",
+      "addingStatus": "Adding Student...",
+      "addBtn": "Add Student",
+      "placeholder": {
+        "firstName": "John",
+        "lastName": "Doe",
+        "address": "Select from map or enter address",
+        "search": "Search...",
+        "center": "Select center...",
+        "notes": "Additional notes about the student..."
+      },
+      "loading": "Loading...",
+      "notFound": "Not found"
+    }
+  },
   "directors": {
     "title": "Directors Management",
     "desc": "Manage all learning center directors in the system.",
@@ -40,7 +94,32 @@
     "last_name": "Last Name",
     "email": "Email Address"
   },
+  "finance": {
+    "title": "Finance",
+    "desc": "Monitor financial indicators of learning centers.",
+    "recent_transactions": "Recent Transactions",
+    "financial_transactions": "Financial transactions",
+    "live": "Live",
+    "all_transactions": "All transactions",
+    "table_title": "Revenue by Learning Centers",
+    "table_desc": "Financial report per center",
+    "search_placeholder": "Center name...",
+    "col_center": "Learning Center",
+    "col_director": "Director",
+    "col_students": "Students",
+    "col_month": "This Month",
+    "col_total": "Total",
+    "details": "Details",
+    "change_filter": "Change search or filters",
+    "total_centers_prefix": "Total",
+    "total_centers_suffix": "centers",
+    "total_revenue": "Total revenue:",
+    "chart_title": "Monthly Revenue Trend",
+    "chart_desc": "Top 5 learning centers (mln UZS)",
+    "total_label": "Total:"
+  },
   "common": {
+    "all": "All",
     "search": "Search...",
     "error": "An error occurred.",
     "no_results": "No results found",

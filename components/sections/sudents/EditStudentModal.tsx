@@ -1,14 +1,20 @@
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { API } from "@/services/api";
 import { toast } from "react-toastify";
 import { useForm } from "react-hook-form";
-import { X, Loader2 } from "lucide-react";
+import { X, Loader2, ChevronDown, Search } from "lucide-react";
 import { IStudent } from "./StudentItem";
+import { useTranslation } from "react-i18next";
 
 interface EditStudentModalProps {
-    student: IStudent;
+    student: IStudent & {
+        center?: string;
+        center_name?: string;
+        notes?: string;
+    };
     onClose: () => void;
 }
 
@@ -17,33 +23,38 @@ interface IEditStudentPayload {
     last_name: string;
     phone: string;
     email: string;
-    center: string;
+    center: string; // Backendga ID ketadi
     date_of_birth: string;
     address: string;
     notes?: string;
     status: "active" | "inactive" | "pending";
 }
 
+function formatUzPhone(raw: string): string {
+    const d = raw.slice(0, 9);
+    if (d.length <= 2) return d;
+    if (d.length <= 5) return `${d.slice(0, 2)}-${d.slice(2, 5)}`;
+    if (d.length <= 7) return `${d.slice(0, 2)}-${d.slice(2, 5)}-${d.slice(5, 7)}`;
+    return `${d.slice(0, 2)}-${d.slice(2, 5)}-${d.slice(5, 7)}-${d.slice(7)}`;
+}
+
 export default function EditStudentModal({ student, onClose }: EditStudentModalProps) {
     const queryClient = useQueryClient();
+    const { t } = useTranslation();
 
-    // Ism familiyani ajratish
+    const [phoneDisplay, setPhoneDisplay] = useState("");
+    const [isCenterOpen, setIsCenterOpen] = useState(false);
+    const [centerSearch, setCenterSearch] = useState("");
+    const [selectedCenter, setSelectedCenter] = useState<{ id: string, name: string } | null>(null);
+
     const nameParts = student.full_name ? student.full_name.split(" ") : [];
     const defaultFirstName = student.first_name || nameParts[0] || "";
     const defaultLastName = student.last_name || nameParts.slice(1).join(" ") || "";
 
-    // Telefon raqamni vizual chiroyli ko'rsatish funksiyasi
-    const formatPhone = (phone: string) => {
-        const clean = phone.replace(/\D/g, "");
-        if (clean.length === 12) {
-            return `+998 (${clean.slice(3, 5)}) ${clean.slice(5, 8)}-${clean.slice(8, 10)}-${clean.slice(10)}`;
-        }
-        return phone;
-    };
-
     const {
         register,
         handleSubmit,
+        setValue,
         formState: { errors },
     } = useForm<IEditStudentPayload>({
         defaultValues: {
@@ -51,163 +62,316 @@ export default function EditStudentModal({ student, onClose }: EditStudentModalP
             last_name: defaultLastName,
             phone: student.phone || "",
             email: student.email || "",
-            center: "a8c590b8-2b54-4e94-bbe4-0bb006093ecd",
+            center: student.center || "", // Boshlanishiga student ichidagi ID ni beramiz
             date_of_birth: student.date_of_birth || "",
             address: student.address || "",
             status: student.status || "active",
-            notes: "",
+            notes: student.notes || "",
         },
     });
+
+    // 1. Barcha o'quv markazlari ro'yxati (Dropdown va eski nomni qidirib topish uchun)
+    const { data: centersData, isLoading: isCentersLoading } = useQuery({
+        queryKey: ["centers-list"],
+        queryFn: async () => {
+            const res = await API.get("/api/v1/super-admin/centers/");
+            return res.data.results;
+        }
+    });
+
+    // 2. Talabaning joriy markazini ID bo'yicha API'dan olish (Zaxira uchun)
+    const { data: currentCenterData } = useQuery({
+        queryKey: ["current-center", student.center],
+        queryFn: async () => {
+            if (!student.center) return null;
+            const res = await API.get(`/api/v1/super-admin/centers/${student.center}/`);
+            return res.data;
+        },
+        enabled: !!student.center && !selectedCenter, // Agar ro'yxatdan topolmasakgina bu API ishlaydi
+    });
+
+    // Telefon raqamini formatlash
+    useEffect(() => {
+        if (student.phone) {
+            const clean = student.phone.replace("+998", "").replace(/\D/g, "");
+            setPhoneDisplay(formatUzPhone(clean));
+            setValue("phone", student.phone);
+        }
+    }, [student.phone, setValue]);
+
+    // 3. MUAMMONI YECHIMI: Modal ochilishi bilan ro'yxat ichidan eski markaz nomini qidirib topish
+    useEffect(() => {
+        if (student.center && centersData && centersData.length > 0) {
+            const found = centersData.find((c: any) => String(c.id) === String(student.center));
+            if (found) {
+                setSelectedCenter({ id: found.id, name: found.name });
+                setValue("center", found.id, { shouldValidate: true });
+            }
+        }
+    }, [student.center, centersData, setValue]);
+
+    // 4. Agar umumiy ro'yxat hali kelmagan bo'lsa, alohida API'dan kelgan natijani UI ga ilamiz
+    useEffect(() => {
+        if (currentCenterData && !selectedCenter) {
+            setSelectedCenter({
+                id: currentCenterData.id,
+                name: currentCenterData.name
+            });
+            setValue("center", currentCenterData.id, { shouldValidate: true });
+        }
+    }, [currentCenterData, selectedCenter, setValue]);
+
+    const filteredCenters = centersData?.filter((c: any) =>
+        c.name.toLowerCase().includes(centerSearch.toLowerCase())
+    );
+
+    const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const raw = e.target.value.replace(/\D/g, "");
+        const local = raw.slice(0, 9);
+        setPhoneDisplay(formatUzPhone(local));
+        const full = "+998" + local;
+        setValue("phone", full, { shouldValidate: true });
+    };
 
     const { mutate: updateStudent, isPending } = useMutation({
         mutationFn: async (payload: IEditStudentPayload) => {
             return await API.put(`/api/v1/students/${student.id}/`, payload);
         },
         onSuccess: () => {
-            toast.success("Talaba ma'lumotlari muvaffaqiyatli yangilandi");
+            toast.success(t("students.toast.editSuccess", "Talaba ma'lumotlari muvaffaqiyatli yangilandi"));
             queryClient.invalidateQueries({ queryKey: ["students"] });
             onClose();
         },
         onError: (err: any) => {
-            toast.error(err?.response?.data?.message || "Yangilashda xatolik yuz berdi");
+            const backendError = err?.response?.data;
+            if (backendError && backendError.center) {
+                toast.error(`Center Error: ${backendError.center[0]}`);
+            } else {
+                toast.error(backendError?.message || t("students.toast.editError", "Yangilashda xatolik yuz berdi"));
+            }
         },
     });
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-150">
-            <div className="w-full max-w-2xl bg-white rounded-xl shadow-xl overflow-hidden animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-150">
+            <div className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-xl shadow-xl overflow-hidden animate-in zoom-in-95 duration-150 border border-slate-100 dark:border-slate-800 flex flex-col my-auto">
 
                 {/* Modal Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex-shrink-0">
                     <div>
-                        <h3 className="text-base font-semibold text-slate-900">Talaba ma'lumotlarini tahrirlash</h3>
-                        <p className="text-xs text-slate-400 mt-0.5">Tizimdagi ma'lumotlarni yangilash</p>
+                        <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                            {t("students.modal.editTitle", "Talaba ma'lumotlarini tahrirlash")}
+                        </h3>
+                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+                            {t("students.modal.editSubTitle", "Tizimdagi ma'lumotlarni yangilash")}
+                        </p>
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                        className="p-1.5 rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-350 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                     >
                         <X className="w-5 h-5" />
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit((data) => updateStudent(data))} className="p-6 space-y-5">
+                {/* Form Content Scrollable */}
+                <form
+                    onSubmit={handleSubmit((data) => updateStudent(data))}
+                    className="p-6 space-y-5 overflow-y-auto max-h-[calc(100vh-140px)] custom-scrollbar"
+                >
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                        {/* First Name */}
+                        {/* Ism */}
                         <div>
-                            <label className="block text-xs font-semibold text-slate-600 uppercase mb-1.5 tracking-wider">Ism</label>
+                            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase mb-1.5 tracking-wider">
+                                {t("students.modal.firstName", "Ism")}
+                            </label>
                             <input
                                 type="text"
-                                {...register("first_name", { required: "Ism kiritilishi shart" })}
-                                className="w-full h-11 px-3.5 text-sm bg-white border border-slate-200 rounded-lg focus:outline-hidden focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all text-slate-800 shadow-xs"
-                                placeholder="John"
+                                {...register("first_name", { required: t("students.validation.firstName", "Ism kiritilishi shart") })}
+                                className="w-full h-11 px-3.5 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-hidden focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all text-slate-800 dark:text-slate-100 shadow-xs"
                             />
                             {errors.first_name && <p className="text-[11px] text-red-500 mt-1">{errors.first_name.message}</p>}
                         </div>
 
-                        {/* Last Name */}
+                        {/* Familiya */}
                         <div>
-                            <label className="block text-xs font-semibold text-slate-600 uppercase mb-1.5 tracking-wider">Familiya</label>
+                            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase mb-1.5 tracking-wider">
+                                {t("students.modal.lastName", "Familiya")}
+                            </label>
                             <input
                                 type="text"
-                                {...register("last_name", { required: "Familiya kiritilishi shart" })}
-                                className="w-full h-11 px-3.5 text-sm bg-white border border-slate-200 rounded-lg focus:outline-hidden focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all text-slate-800 shadow-xs"
-                                placeholder="Doe"
+                                {...register("last_name", { required: t("students.validation.lastName", "Familiya kiritilishi shart") })}
+                                className="w-full h-11 px-3.5 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-hidden focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all text-slate-800 dark:text-slate-100 shadow-xs"
                             />
                             {errors.last_name && <p className="text-[11px] text-red-500 mt-1">{errors.last_name.message}</p>}
                         </div>
 
-                        {/* Phone Number - Add modal ko'rinishida lekin disabled */}
+                        {/* Telefon raqam */}
                         <div>
-                            <label className="block text-xs font-semibold text-slate-400 uppercase mb-1.5 tracking-wider">Telefon raqam</label>
-                            <input
-                                type="text"
-                                disabled
-                                value={formatPhone(student.phone)}
-                                className="w-full h-11 px-3.5 text-sm bg-slate-50 border border-slate-200 rounded-lg text-slate-400 cursor-not-allowed font-medium shadow-xs"
-                            />
+                            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase mb-1.5 tracking-wider">
+                                {t("students.modal.phone", "Telefon raqam")}
+                            </label>
+                            <div className="relative flex items-center">
+                                <div className="absolute left-3.5 flex items-center gap-1.5 select-none pointer-events-none">
+                                    <span className="text-base leading-none">🇺🇿</span>
+                                    <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">+998</span>
+                                </div>
+                                <input
+                                    type="tel"
+                                    value={phoneDisplay}
+                                    onChange={handlePhoneChange}
+                                    placeholder="90-123-45-67"
+                                    className="w-full h-11 pl-[92px] pr-3.5 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-hidden focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all text-slate-800 dark:text-slate-100 shadow-xs"
+                                />
+                            </div>
                         </div>
 
                         {/* Email */}
                         <div>
-                            <label className="block text-xs font-semibold text-slate-600 uppercase mb-1.5 tracking-wider">Email</label>
+                            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase mb-1.5 tracking-wider">
+                                {t("students.modal.email", "Email")}
+                            </label>
                             <input
                                 type="email"
-                                {...register("email", { required: "Email manzili shart" })}
-                                className="w-full h-11 px-3.5 text-sm bg-white border border-slate-200 rounded-lg focus:outline-hidden focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all text-slate-800 shadow-xs"
-                                placeholder="user@example.com"
+                                {...register("email", { required: t("students.validation.email", "Email manzili shart") })}
+                                className="w-full h-11 px-3.5 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-hidden focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all text-slate-800 dark:text-slate-100 shadow-xs"
                             />
                             {errors.email && <p className="text-[11px] text-red-500 mt-1">{errors.email.message}</p>}
                         </div>
 
                         {/* Status */}
                         <div>
-                            <label className="block text-xs font-semibold text-slate-600 uppercase mb-1.5 tracking-wider">Status</label>
+                            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase mb-1.5 tracking-wider">
+                                {t("students.modal.status", "Status")}
+                            </label>
                             <select
                                 {...register("status")}
-                                className="w-full h-11 px-3.5 text-sm bg-white border border-slate-200 rounded-lg focus:outline-hidden focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all text-slate-800 cursor-pointer shadow-xs"
+                                className="w-full h-11 px-3.5 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-hidden focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all text-slate-800 dark:text-slate-100 cursor-pointer shadow-xs"
                             >
-                                <option value="active">Active</option>
-                                <option value="inactive">Inactive</option>
-                                <option value="pending">Pending</option>
+                                <option value="active">{t("students.status.active", "Active")}</option>
+                                <option value="inactive">{t("students.status.inactive", "Inactive")}</option>
+                                <option value="pending">{t("students.status.pending", "Pending")}</option>
                             </select>
                         </div>
 
-                        {/* Date of Birth */}
+                        {/* Learning Center Select */}
+                        <div className="relative">
+                            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase mb-1.5 tracking-wider">
+                                {t("students.modal.learningCenter", "O'quv markazi")}
+                            </label>
+                            <div
+                                className="w-full h-11 px-3.5 flex items-center justify-between cursor-pointer bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-hidden focus:border-indigo-500 transition-all text-sm text-slate-800 dark:text-slate-100 shadow-xs"
+                                onClick={() => setIsCenterOpen(!isCenterOpen)}
+                            >
+                                <span className="truncate max-w-[180px]">
+                                    {selectedCenter ? (
+                                        selectedCenter.name //
+                                    ) : isCentersLoading ? (
+                                        <span className="text-slate-400 text-xs flex items-center gap-1">
+                                            <Loader2 className="w-3 h-3 animate-spin" /> {t("students.modal.loading", "Yuklanmoqda...")}
+                                        </span>
+                                    ) : (
+                                        <span className="text-slate-400 text-xs">{t("students.modal.placeholder.center", "Select center...")}</span> //
+                                    )}
+                                </span>
+                                <ChevronDown className="w-4 h-4 text-slate-400" />
+                            </div>
+
+                            {isCenterOpen && (
+                                <div className="absolute w-full mt-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg shadow-xl z-50 p-2 animate-in fade-in slide-in-from-top-1">
+                                    <div className="flex items-center gap-2 border-b dark:border-slate-700 pb-2 mb-2">
+                                        <Search className="w-4 h-4 text-slate-400" />
+                                        <input
+                                            autoFocus
+                                            placeholder={t("students.modal.placeholder.search", "Qidirish...")}
+                                            className="w-full bg-transparent outline-none text-sm text-slate-900 dark:text-slate-100"
+                                            onChange={(e) => setCenterSearch(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="max-h-[150px] overflow-y-auto">
+                                        {isCentersLoading ? (
+                                            <p className="text-center py-2 text-xs text-slate-400">{t("students.modal.loading", "Yuklanmoqda...")}</p>
+                                        ) : filteredCenters?.length > 0 ? (
+                                            filteredCenters.map((c: any) => (
+                                                <div
+                                                    key={c.id}
+                                                    className="px-3 py-2 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-slate-800 dark:text-slate-200 cursor-pointer rounded-md text-sm transition-colors"
+                                                    onClick={() => {
+                                                        setSelectedCenter({ id: c.id, name: c.name });
+                                                        setValue("center", c.id, { shouldValidate: true });
+                                                        setIsCenterOpen(false);
+                                                    }}
+                                                >
+                                                    {c.name}
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <p className="text-center py-2 text-xs text-slate-400">{t("students.modal.notFound", "Topilmadi")}</p>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Tug'ilgan sana */}
                         <div>
-                            <label className="block text-xs font-semibold text-slate-600 uppercase mb-1.5 tracking-wider">Tug'ilgan sana</label>
+                            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase mb-1.5 tracking-wider">
+                                {t("students.modal.dob", "Tug'ilgan sana")}
+                            </label>
                             <input
                                 type="date"
                                 {...register("date_of_birth")}
-                                className="w-full h-11 px-3.5 text-sm bg-white border border-slate-200 rounded-lg focus:outline-hidden focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all text-slate-800 shadow-xs"
+                                className="w-full h-11 px-3.5 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-hidden focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all text-slate-800 dark:text-slate-100 shadow-xs dark:[color-scheme:dark]"
                             />
                         </div>
                     </div>
 
-                    {/* Address */}
+                    {/* Manzil */}
                     <div>
-                        <label className="block text-xs font-semibold text-slate-600 uppercase mb-1.5 tracking-wider">Manzil</label>
+                        <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase mb-1.5 tracking-wider">
+                            {t("students.modal.address", "Manzil")}
+                        </label>
                         <input
                             type="text"
                             {...register("address")}
-                            className="w-full h-11 px-3.5 text-sm bg-white border border-slate-200 rounded-lg focus:outline-hidden focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all text-slate-800 shadow-xs"
-                            placeholder="Toshkent sh., Yunusobod d-7"
+                            className="w-full h-11 px-3.5 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-hidden focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all text-slate-800 dark:text-slate-100 shadow-xs"
                         />
                     </div>
 
-                    {/* Notes */}
+                    {/* Eslatmalar */}
                     <div>
-                        <label className="block text-xs font-semibold text-slate-600 uppercase mb-1.5 tracking-wider">Eslatmalar (Notes)</label>
+                        <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase mb-1.5 tracking-wider">
+                            {t("students.modal.notes", "Eslatmalar (Notes)")}
+                        </label>
                         <textarea
                             rows={3}
                             {...register("notes")}
-                            className="w-full p-3.5 text-sm bg-white border border-slate-200 rounded-lg focus:outline-hidden focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all text-slate-800 resize-none shadow-xs"
-                            placeholder="Qo'shimcha ma'lumotlar..."
+                            className="w-full p-3.5 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-hidden focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all text-slate-800 dark:text-slate-100 resize-none shadow-xs"
                         />
                     </div>
 
-                    {/* Modal Footer - Add Modal bilan 1:1 bir xil kulrang blokli o'ram */}
-                    <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 bg-slate-50/50 -mx-6 -mb-6 p-6">
+                    {/* Modal Footer */}
+                    <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 pt-4 mt-2 flex-shrink-0">
                         <button
                             type="button"
                             onClick={onClose}
                             disabled={isPending}
-                            className="h-10 px-4 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-50 shadow-xs"
+                            className="h-10 px-4 text-xs font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer disabled:opacity-50 shadow-xs"
                         >
-                            Bekor qilish
+                            {t("students.modal.cancel", "Bekor qilish")}
                         </button>
                         <button
                             type="submit"
                             disabled={isPending}
-                            className="inline-flex items-center justify-center gap-2 h-10 px-5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors cursor-pointer disabled:opacity-70 min-w-[120px] shadow-sm"
+                            className="inline-flex items-center justify-center gap-2 h-10 px-5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 rounded-lg transition-colors cursor-pointer disabled:opacity-70 min-w-[120px] shadow-sm"
                         >
                             {isPending ? (
                                 <>
                                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                    Saqlanmoqda...
+                                    {t("students.modal.savingStatus", "Saqlanmoqda...")}
                                 </>
                             ) : (
-                                "Saqlash"
+                                t("students.modal.saveBtn", "Saqlash")
                             )}
                         </button>
                     </div>
