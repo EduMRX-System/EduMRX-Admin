@@ -15,6 +15,8 @@ import Title from "@/components/ui/Title";
 import { PhoneInput } from "@/components/ui/PhoneInput";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { t } from "i18next";
+import Particles from "@/components/Particles";
+
 
 const schema = yup.object({
     phone: yup.string().required("Phone number is mandatory")
@@ -62,18 +64,35 @@ export default function LoginView() {
     });
 
     return (
-        <div className="min-h-screen bg-[#EEF2FF] dark:from-slate-950 dark:to-slate-900 flex items-center justify-center p-4 transition-colors">
-            <div className="w-full max-w-[448px] bg-white dark:bg-slate-900 rounded-2xl shadow-xl p-8 border border-slate-100 dark:border-slate-800">
+        <div className="relative min-h-screen bg-[#EEF2FF] dark:bg-slate-950 flex items-center justify-center p-4 transition-colors duration-300 overflow-hidden">
+
+            {/* 2. Orqa fondagi animatsiya (React Bits komponenti) */}
+            <div className="absolute inset-0 z-0 pointer-events-none opacity-40 dark:opacity-60">
+                <Particles
+                    particleColors={["#ffffff"]}
+                    particleCount={200}
+                    particleSpread={10}
+                    speed={0.1}
+                    particleBaseSize={100}
+                    moveParticlesOnHover
+                    alphaParticles={false}
+                    disableRotation={false}
+                    pixelRatio={1}
+                />
+            </div>
+
+            {/* 3. Login formasi - z-10 orqali animatsiyadan tepaga ko'taramiz */}
+            <div className="relative z-10 w-full max-w-[448px] bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl shadow-xl p-8 border border-slate-100 dark:border-slate-800 transition-colors duration-300">
                 <div className="mb-8 text-center">
                     <Title text="EDU X" />
                     <Text text="Education Center ADMIN" />
                 </div>
 
                 <div className="mb-6">
-                    <h2 className="text-[20px] font-semibold text-[#191C1D] dark:text-white">
+                    <h2 className="text-[20px] font-semibold text-[#191C1D] dark:text-slate-100">
                         {t("auth.welcome")}
                     </h2>
-                    <p className="text-[14px] text-[#464555] dark:text-slate-400">
+                    <p className="text-[14px] text-[#464555] dark:text-slate-400 mt-1">
                         {t("auth.desc")}
                     </p>
                 </div>
@@ -98,7 +117,7 @@ export default function LoginView() {
 
                     <button
                         disabled={isPending}
-                        className="w-full h-[40px] bg-[#4F46E5] text-white rounded-lg font-bold flex items-center justify-center hover:bg-[#4338CA] dark:hover:bg-[#6366f1] transition-all disabled:opacity-70"
+                        className="w-full h-[40px] bg-[#4F46E5] text-white rounded-lg font-bold flex items-center justify-center hover:bg-[#4338CA] dark:bg-[#5551FF] dark:hover:bg-[#4F46E5] transition-all disabled:opacity-70"
                     >
                         {isPending ? (
                             <Loader2 className="animate-spin mr-2" />

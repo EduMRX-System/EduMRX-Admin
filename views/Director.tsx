@@ -86,8 +86,11 @@ export default function DirectorsList() {
 
             {/* LOADING */}
             {isLoading && (
-                <div className="py-20 text-center">
-                    <Loader2 className="w-8 h-8 mx-auto text-indigo-600 animate-spin" />
+                <div className="flex flex-col items-center justify-center py-24 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 shadow-xs transition-colors">
+                    <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-3 font-medium">
+                        {t("directors.loading")}
+                    </p>
                 </div>
             )}
 
@@ -139,7 +142,7 @@ export default function DirectorsList() {
                                         key={director.id}
                                         director={director}
                                         viewMode="list"
-                                        onEdit={(d) => setEditTarget(d)}
+                                        onEdit={(d: any) => setEditTarget(d)}
                                         onDelete={(id, name) => setDeleteTarget({ id, name })}
                                         formatPhone={formatPhoneView}
                                     />

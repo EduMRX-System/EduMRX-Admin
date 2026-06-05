@@ -9,7 +9,7 @@ export interface IDirector {
   full_name: string;
   phone: string;
   email: string;
-  avatar: string;
+  avatar?: string | null;
   created_at: string;
 }
 
@@ -20,6 +20,10 @@ interface DirectorItemProps {
   onDelete: (id: string, name: string) => void;
   formatPhone: (phone: string) => string;
 }
+
+const BASE_URL = process.env.NEXT_PUBLIC_DataBaseURL;
+
+
 
 export default function DirectorItem({
   director,
@@ -32,6 +36,9 @@ export default function DirectorItem({
     ? new Date(director.created_at).toLocaleDateString("uz-UZ")
     : "—";
 
+  console.log(BASE_URL);
+
+
   if (viewMode === "list") {
     return (
       <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
@@ -40,11 +47,18 @@ export default function DirectorItem({
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center overflow-hidden shrink-0">
               {director.avatar ? (
-                // eslint-disable-next-line @next/next/no-img-element
                 <Image
-                  src={director.avatar}
-                  alt={director.full_name}
-                  className="w-full h-full object-cover"
+                  src={
+                    director?.avatar
+                      ? director.avatar.includes("edumrx-1.onrender.com")
+                        ? director.avatar.replace("edumrx-1.onrender.com", "www.edumrx.uz")
+                        : director.avatar.startsWith("http")
+                          ? director.avatar // Agar boshqa to'g'ri http link bo'lsa tegmaydi
+                          : `${BASE_URL?.replace(/\/$/, "")}/${director.avatar.replace(/^\//, "")}`
+                      : "/default-avatar.png"
+                  } alt="Avatar"
+                  width={40}
+                  height={40}
                 />
               ) : (
                 <User className="w-5 h-5 text-slate-400" />
@@ -114,6 +128,8 @@ export default function DirectorItem({
           <div className="w-12 h-12 rounded-full bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex items-center justify-center overflow-hidden shrink-0">
             {director.avatar ? (
               <Image
+                width={40}
+                height={40}
                 src={director.avatar}
                 alt={director.full_name}
                 className="w-full h-full object-cover"

@@ -41,8 +41,9 @@ export default function CenterItem({
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center overflow-hidden shrink-0">
               {center.logo ? (
-                // eslint-disable-next-line @next/next/no-img-element
                 <Image
+                  width={40}
+                  height={40}
                   src={center.logo}
                   alt={center.name}
                   className="w-full h-full object-cover"
@@ -97,22 +98,20 @@ export default function CenterItem({
         {/* Status */}
         <td className="py-4 px-5">
           <span
-            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold capitalize border ${
-              center.status === "active"
-                ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900"
-                : center.status === "pending"
-                  ? "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border-amber-100 dark:border-amber-900"
-                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700"
-            }`}
+            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold capitalize border ${center.status === "active"
+              ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900"
+              : center.status === "pending"
+                ? "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border-amber-100 dark:border-amber-900"
+                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700"
+              }`}
           >
             <span
-              className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
-                center.status === "active"
-                  ? "bg-emerald-500"
-                  : center.status === "pending"
-                    ? "bg-amber-500"
-                    : "bg-slate-400"
-              }`}
+              className={`w-1.5 h-1.5 rounded-full mr-1.5 ${center.status === "active"
+                ? "bg-emerald-500"
+                : center.status === "pending"
+                  ? "bg-amber-500"
+                  : "bg-slate-400"
+                }`}
             />
             {t(`centers.status.${center.status}`)}
           </span>
@@ -161,6 +160,8 @@ export default function CenterItem({
             {center.logo ? (
               // eslint-disable-next-line @next/next/no-img-element
               <Image
+                width={40}
+                height={40}
                 src={center.logo}
                 alt={center.name}
                 className="w-full h-full object-cover"
@@ -172,11 +173,10 @@ export default function CenterItem({
 
           <div className="flex flex-col items-end gap-1.5">
             <span
-              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold capitalize border ${
-                center.status === "active"
-                  ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900"
-                  : "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border-amber-100 dark:border-amber-900"
-              }`}
+              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold capitalize border ${center.status === "active"
+                ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900"
+                : "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border-amber-100 dark:border-amber-900"
+                }`}
             >
               {t(`centers.status.${center.status}`)}
             </span>

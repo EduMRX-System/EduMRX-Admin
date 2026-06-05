@@ -1,58 +1,76 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useTranslation } from "react-i18next"; // i18next hooki
+import { useTranslation } from "react-i18next";
 import { API } from "@/services/api";
-import { Loader2, AlertCircle, User, Plus } from "lucide-react";
+import { Loader2, AlertCircle, User, Plus, Search, X } from "lucide-react";
 import { toast } from "react-toastify";
-import Image from "next/image";
 
-import { icons } from "@/constants/icons";
 import Title from "@/components/ui/Title";
 import Text from "@/components/ui/Text";
 import StudentItem from "@/components/sections/sudents/StudentItem";
 import AddStudentModal from "@/components/sections/sudents/AddStudentModal";
 import EditStudentModal from "@/components/sections/sudents/EditStudentModal";
 import DeleteStudentModal from "@/components/sections/sudents/DeleteStudentModal";
+import PaginationControl from "@/components/ui/PaginationControl";
 import { IStudent } from "@/types";
 
 interface IStudentsResponse {
   results?: IStudent[];
   data?: IStudent[];
+  count?: number; // Pagination uchun jami elementlar soni
 }
 
 export default function StudentsView() {
-  const { t } = useTranslation(); // Tarjima funksiyasi
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
+
+  // Pagination states
+  const [pageSize, setPageSize] = useState(5);
+  const [page, setPage] = useState(1);
+
+  // Search states
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  // Modals states
   const [isOpenAddModal, setIsOpenAddModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState<IStudent | null>(null);
   const [deletingStudent, setDeletingStudent] = useState<IStudent | null>(null);
 
-  const centerId = "a8c590b8-2b54-4e94-bbe4-0bb006093ecd";
 
-  // Center ma'lumotlari
-  const { data: centerData } = useQuery({
-    queryKey: ["current-center", centerId],
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      const cleaned = search.trim();
+      setDebouncedSearch(cleaned === "" ? "" : search);
+      setPage(1); // Qidiruv o'zgarganda birinchi sahifaga qaytarish
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [search]);
+
+  // Talabalarni yuklash (Pagination va Search bilan)
+  const { data: studentsData, isLoading, isError, error } = useQuery({
+    queryKey: ["students", page, pageSize, debouncedSearch],
     queryFn: async () => {
-      const res = await API.get(`/api/v1/super-admin/centers/${centerId}/`);
+      const res = await API.get<IStudentsResponse>(
+        `/api/v1/students/?page=${page}&page_size=${pageSize}&search=${debouncedSearch}`
+      );
       return res?.data;
     },
-    enabled: !!centerId,
+    enabled: debouncedSearch.trim().length > 0 || debouncedSearch === ""
   });
 
-  const { data: studentsData, isLoading, isError, error } = useQuery({
-    queryKey: ["students"],
-    queryFn: async () => {
-      const res = await API.get<IStudentsResponse | IStudent[]>("/api/v1/students/");
-      return res?.data;
-    }
-  });
-
+  // Data mapping
   const studentsList = Array.isArray(studentsData)
     ? studentsData
     : studentsData?.results || studentsData?.data || [];
 
+  const totalCount = (studentsData as any)?.count || 0;
+  const totalPages = Math.ceil(totalCount / pageSize);
+
+  // O'chirish mutationi
   const { mutate: deleteStudent, isPending: isDeletePending } = useMutation({
     mutationFn: async (id: string) => {
       await API.delete(`/api/v1/students/${id}/`);
@@ -76,9 +94,9 @@ export default function StudentsView() {
   };
 
   return (
-    <div className="w-full text-slate-900 dark:text-slate-100">
+    <div className="w-full text-slate-900 dark:text-slate-100 space-y-6">
       {/* HEADER */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
             <Title text={t("students.title", "Students")} />
@@ -87,15 +105,41 @@ export default function StudentsView() {
         </div>
         <button
           onClick={() => setIsOpenAddModal(true)}
-          className="inline-flex items-center justify-center gap-2 h-10 px-4 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white font-semibold text-sm rounded-lg shadow-sm transition-colors cursor-pointer shrink-0"
+          className="inline-flex items-center justify-center gap-2 h-10 px-4 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white font-semibold text-sm rounded-lg shadow-sm transition-colors cursor-pointer shrink-0 self-end sm:self-auto"
         >
-          <Plus className="w-4 h-4" /> {t("centers.add")}
+          <Plus className="w-4 h-4" />
           <span>{t("students.addBtn", "Add Student")}</span>
         </button>
       </div>
 
+      {/* QIDIRUV INPUTI */}
+      <div className="relative w-full sm:w-64">
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={t("students.search_placeholder", "Talabalarni qidirish...")}
+          className="w-full pl-9 pr-8 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-indigo-500 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-colors"
+        />
+        <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-slate-400" />
+        {search && (
+          <button
+            onClick={() => setSearch("")}
+            className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
+      {/* QIDIRUV ANIMATSIYASI */}
+      {isLoading && debouncedSearch && (
+        <div className="text-xs text-indigo-600 dark:text-indigo-400 animate-pulse py-1">
+          {t("common.searching", "Qidirilmoqda...")}
+        </div>
+      )}
+
       {/* STATES */}
-      {isLoading && (
+      {isLoading && !debouncedSearch && (
         <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 shadow-xs">
           <Loader2 className="w-8 h-8 text-indigo-600 dark:text-indigo-400 animate-spin" />
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-3 font-medium">
@@ -114,36 +158,47 @@ export default function StudentsView() {
         </div>
       )}
 
-      {/* JADVAL */}
+      {/* JADVAL VA PAGINATION */}
       {!isLoading && !isError && studentsList.length > 0 && (
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xs border border-slate-100 dark:border-slate-800 overflow-hidden animate-in fade-in">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">
-                  <th className="py-3.5 px-5">{t("students.table.name", "Student Name")}</th>
-                  <th className="py-3.5 px-5">{t("students.table.contact", "Contact Info")}</th>
-                  <th className="py-3.5 px-5">{t("students.table.center", "Learning Center")}</th>
-                  <th className="py-3.5 px-5">{t("students.table.address", "Location / Address")}</th>
-                  <th className="py-3.5 px-5">{t("students.table.dob", "Date of Birth")}</th>
-                  <th className="py-3.5 px-5 text-right">{t("students.table.actions", "Actions")}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm text-slate-700 dark:text-slate-300">
-                {studentsList.map((student: IStudent) => (
-                  <StudentItem
-                    key={student.id}
-                    student={student}
-                    centerNameFromApi={centerData?.name}
-                    onEdit={(s) => setEditingStudent(s)}
-                    onDelete={(s) => setDeletingStudent(s)}
-                    formatPhone={formatPhoneView}
-                  />
-                ))}
-              </tbody>
-            </table>
+        <>
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xs border border-slate-100 dark:border-slate-800 overflow-hidden animate-in fade-in">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">
+                    <th className="py-3.5 px-5">{t("students.table.name", "Student Name")}</th>
+                    <th className="py-3.5 px-5">{t("students.table.contact", "Contact Info")}</th>
+                    <th className="py-3.5 px-5">{t("students.table.center", "Learning Center")}</th>
+                    <th className="py-3.5 px-5">{t("students.table.address", "Location / Address")}</th>
+                    <th className="py-3.5 px-5">{t("students.table.dob", "Date of Birth")}</th>
+                    <th className="py-3.5 px-5 text-right">{t("students.table.actions", "Actions")}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm text-slate-700 dark:text-slate-300">
+                  {studentsList.map((student: IStudent) => (
+                    <StudentItem
+                      key={student.id}
+                      student={student}
+                      onEdit={(s) => setEditingStudent(s)}
+                      onDelete={(s) => setDeletingStudent(s)}
+                      formatPhone={formatPhoneView}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+
+          {/* PAGINATION CONTROL INTEGRATSIYASI */}
+          <PaginationControl
+            totalCount={totalCount}
+            page={page}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            setPage={setPage}
+            setPageSize={setPageSize}
+          />
+        </>
       )}
 
       {/* BO'SH HOLAT */}

@@ -1,3 +1,7 @@
+---
+alwaysApply: true
+---
+
 {
   "header": {
     "user_name": "User Name",
@@ -92,8 +96,7 @@
     "choose_file": "Choose File",
     "first_name": "First Name",
     "last_name": "Last Name",
-    "email": "Email Address",
-    "loading": "Loading directors Lisst..."
+    "email": "Email Address"
   },
   "finance": {
     "title": "Finance",
@@ -222,46 +225,7 @@
     "active_lessons": "Current active lesson sessions",
     "new_students": "New students",
     "group_capacity": "Group capacity",
-    "realtime_note": "System data updates in real time",
-    "super_admin": {
-      "super_title": "Global Management",
-      "super_desc": "General parameters and global monitoring of SaaS platform.",
-      "live_mode": "LIVE MONITORING",
-      "view": "View",
-      "extended_data": "Extended data:",
-      "total_centers": "Total Learning Centers",
-      "active_centers": "Active centers",
-      "new_this_month": "New this month",
-      "demo_requests": "Demo requests",
-      "total_saas_users": "Total SaaS Users",
-      "total_students": "Total students",
-      "total_teachers": "Total teachers",
-      "system_admins": "System admins",
-      "mrr_title": "Monthly Recurring Revenue (MRR)",
-      "paid_via_click": "Paid via Click",
-      "paid_via_payme": "Paid via Payme",
-      "pending_invoices": "Pending invoices",
-      "system_health": "System Stability (Uptime)",
-      "api_gateway": "API Gateway",
-      "sms_service": "SMS Gateway",
-      "db_cluster": "Database Cluster",
-      "quick_logs": "Live Monitor & Logs",
-      "quick_logs_desc": "Current load indicators of the infrastructure",
-      "gateway_traffic": "Gateway Traffic",
-      "db_locks": "Database Locks",
-      "memory_usage": "Memory Usage",
-      "realtime_note": "System parameters update in real time",
-      "charts": {
-        "mrr_analytics": "SaaS Revenue Growth",
-        "mrr_sub": "MRR & Net Profit",
-        "total_revenue": "Total revenue",
-        "net_profit": "Net profit",
-        "plans": "SaaS Plan Distribution",
-        "unit_centers": "centers",
-        "signups": "New Center Signups",
-        "bar_name": "Learning centers"
-      }
-    }
+    "realtime_note": "System data updates in real time"
   },
   "attendance": {
     "title": "Attendance Overview",

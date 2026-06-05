@@ -1,29 +1,34 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
-  experimental: {
-    reactCompiler: true,
+const nextConfig: any = {
+  reactCompiler: true, // experimental ichidan tashqariga chiqarildi
+
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+
+  typescript: {
+    ignoreBuildErrors: true,
   },
 
   images: {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "gkwfbttkyjdxselgxbyz.supabase.co",
-        port: "",
+        hostname: "edumrx-1.onrender.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "www.edumrx.uz",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "edumrx.uz",
         pathname: "/**",
       },
     ],
-  },
-
-  // 1. ESLint xatolariga ko'z yumish (Sizda bor edi)
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-
-  // 2. MANA SHU QISMNI QO'SHING (TypeScript xatolarini o'tkazib yuborish uchun)
-  typescript: {
-    ignoreBuildErrors: true,
   },
 
   async rewrites() {
