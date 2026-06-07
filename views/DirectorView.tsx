@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { API } from "@/services/api";
-import { Plus, Loader2, AlertCircle, User, Search } from "lucide-react";
+import { Plus, AlertCircle, User, Search, List, LayoutGrid } from "lucide-react";
 import Title from "@/components/ui/Title";
 import Text from "@/components/ui/Text";
 import PaginationControl from "@/components/ui/PaginationControl";
@@ -13,12 +13,16 @@ import EditDirectorModal from "@/components/sections/director/EditDirectorModal"
 import DeleteDirectorModal from "@/components/sections/director/DeleteDirectorModal";
 import { IAPIResponse, IDirector } from "@/types";
 import { t } from "i18next";
+import DirectorSkeleton from "@/components/sections/director/DirectorSkeleton";
 
 export default function DirectorsList() {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(5);
     const [search, setSearch] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
+
+    // Grid yoki List ko'rinishini boshqarish
+    const [viewMode, setViewMode] = useState<"list" | "grid">("list");
 
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [editTarget, setEditTarget] = useState<IDirector | null>(null);
@@ -33,7 +37,7 @@ export default function DirectorsList() {
         return () => clearTimeout(handler);
     }, [search]);
 
-    const { data, isLoading, isError, error } = useQuery<IAPIResponse<IDirector[]>>({
+    const { data, isLoading, isError } = useQuery<IAPIResponse<IDirector[]>>({
         queryKey: ["directors", page, pageSize, debouncedSearch],
         queryFn: async () => {
             const res = await API.get(`/api/v1/super-admin/directors/?page=${page}&page_size=${pageSize}&search=${debouncedSearch}`);
@@ -45,6 +49,9 @@ export default function DirectorsList() {
     const directors = data?.results || [];
     const totalCount = data?.count || 0;
     const totalPages = Math.ceil(totalCount / pageSize);
+
+    // Belgilangan pageSize miqdoricha skleton chiqarish uchun massiv
+    const dummySkeletons = Array.from({ length: pageSize });
 
     const formatPhoneView = (phone: string) => {
         const clean = phone?.replace(/\D/g, "") || "";
@@ -62,17 +69,41 @@ export default function DirectorsList() {
                     <Text text={t("directors.desc")} />
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 self-end sm:self-auto">
+                    {/* LIST VA GRID REJIMINI ALMASHTIRGICH TUGMALAR */}
+                    <div className="flex items-center gap-1 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-1 rounded-xl shadow-xs">
+                        <button
+                            type="button"
+                            onClick={() => setViewMode("list")}
+                            className={`p-2 rounded-lg transition-all cursor-pointer ${viewMode === "list"
+                                ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400"
+                                : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                                }`}
+                        >
+                            <List className="w-4 h-4" />
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setViewMode("grid")}
+                            className={`p-2 rounded-lg transition-all cursor-pointer ${viewMode === "grid"
+                                ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400"
+                                : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                                }`}
+                        >
+                            <LayoutGrid className="w-4 h-4" />
+                        </button>
+                    </div>
+
                     <button
                         onClick={() => setIsAddOpen(true)}
-                        className="h-10 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-lg flex items-center gap-2 transition-colors"
+                        className="h-10 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-lg flex items-center gap-2 transition-colors cursor-pointer"
                     >
                         <Plus className="w-4 h-4" /> {t("directors.add")}
                     </button>
                 </div>
             </div>
 
-            {/* QIDIRUV */}
+            {/* QIDIRUV VA FILTR QISMI */}
             <div className="relative">
                 <input
                     type="text"
@@ -84,17 +115,7 @@ export default function DirectorsList() {
                 <Search className="absolute left-2.5 top-3 w-4 h-4 text-slate-400" />
             </div>
 
-            {/* LOADING */}
-            {isLoading && (
-                <div className="flex flex-col items-center justify-center py-24 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 shadow-xs transition-colors">
-                    <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-3 font-medium">
-                        {t("directors.loading")}
-                    </p>
-                </div>
-            )}
-
-            {/* ERROR */}
+            {/* ERROR HOLATI */}
             {isError && (
                 <div className="py-20 text-center text-red-500">
                     <AlertCircle className="mx-auto mb-2" /> {t("common.error")}
@@ -111,7 +132,7 @@ export default function DirectorsList() {
                     {search ? (
                         <button
                             onClick={() => setSearch("")}
-                            className="text-indigo-600 hover:underline mt-2 text-sm"
+                            className="text-indigo-600 hover:underline mt-2 text-sm cursor-pointer"
                         >
                             {t("common.clear_search")}
                         </button>
@@ -123,35 +144,65 @@ export default function DirectorsList() {
                 </div>
             )}
 
-            {/* TABLE */}
-            {directors.length > 0 && (
-                <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xs border border-slate-100 dark:border-slate-800 overflow-hidden transition-colors">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-[11px] font-bold uppercase">
-                                    <th className="py-3 px-5">{t("directors.col_details")}</th>
-                                    <th className="py-3 px-5">{t("directors.col_contact")}</th>
-                                    <th className="py-3 px-5">{t("directors.col_created")}</th>
-                                    <th className="py-3 px-5 text-right">{t("directors.col_actions")}</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
-                                {directors.map((director) => (
+            {/* SKELETON YOKI HAQIQIY MA'LUMOTLAR KO'RINISHI */}
+            {(isLoading || directors.length > 0) && (
+                <div className={`${viewMode === "list" ? "bg-white dark:bg-slate-900 rounded-xl shadow-xs border border-slate-100 dark:border-slate-800 overflow-hidden transition-colors" : ""}`}>
+                    {viewMode === "list" ? (
+                        /* ================== TABLE (LIST) VIEW ================== */
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-[11px] font-bold uppercase">
+                                        <th className="py-3 px-5">{t("directors.col_details")}</th>
+                                        <th className="py-3 px-5">{t("directors.col_contact")}</th>
+                                        <th className="py-3 px-5">{t("directors.col_created")}</th>
+                                        <th className="py-3 px-5 text-right">{t("directors.col_actions")}</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
+                                    {isLoading ? (
+                                        dummySkeletons.map((_, i) => (
+                                            <DirectorSkeleton key={i} viewMode="list" />
+                                        ))
+                                    ) : (
+                                        directors.map((director) => (
+                                            <DirectorItem
+                                                key={director.id}
+                                                director={director}
+                                                viewMode="list"
+                                                onEdit={(d: any) => setEditTarget(d)}
+                                                onDelete={(id, name) => setDeleteTarget({ id, name })}
+                                                formatPhone={formatPhoneView}
+                                            />
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        /* ================== GRID CARD VIEW ================== */
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            {isLoading ? (
+                                dummySkeletons.map((_, i) => (
+                                    <DirectorSkeleton key={i} viewMode="grid" />
+                                ))
+                            ) : (
+                                directors.map((director) => (
                                     <DirectorItem
                                         key={director.id}
                                         director={director}
-                                        viewMode="list"
+                                        viewMode="grid"
                                         onEdit={(d: any) => setEditTarget(d)}
                                         onDelete={(id, name) => setDeleteTarget({ id, name })}
                                         formatPhone={formatPhoneView}
                                     />
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                ))
+                            )}
+                        </div>
+                    )}
 
-                    <div className="p-4 border-t border-slate-100 dark:border-slate-800">
+                    {/* PAGINATION PANEL (Har doim pastki qismda chiroyli qoladi) */}
+                    <div className={`p-4 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 ${viewMode === "grid" ? "rounded-xl border shadow-xs mt-6" : ""}`}>
                         <PaginationControl
                             totalCount={totalCount}
                             page={page}
@@ -164,6 +215,7 @@ export default function DirectorsList() {
                 </div>
             )}
 
+            {/* MODALLAR */}
             {isAddOpen && <AddDirectorModal onClose={() => setIsAddOpen(false)} />}
             {editTarget && <EditDirectorModal director={editTarget} onClose={() => setEditTarget(null)} />}
             {deleteTarget && <DeleteDirectorModal id={deleteTarget.id} name={deleteTarget.name} onClose={() => setDeleteTarget(null)} />}

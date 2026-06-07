@@ -25,7 +25,6 @@ const formatPhoneInput = (value: string) => {
 
 function loadYandexMaps(): Promise<void> {
   const win = window as any;
-
   if (win.__ymapsReady) return Promise.resolve();
   if (win.__ymapsPromise) return win.__ymapsPromise;
 
@@ -41,10 +40,7 @@ function loadYandexMaps(): Promise<void> {
 
   win.__ymapsPromise = new Promise<void>((resolve, reject) => {
     const apiKey = process.env.NEXT_PUBLIC_YANDEX_MAPS_KEY;
-
-    const existing = document.querySelector(
-      `script[src*="api-maps.yandex.ru"]`,
-    );
+    const existing = document.querySelector(`script[src*="api-maps.yandex.ru"]`);
     if (existing) {
       const wait = () => {
         if (win.ymaps) {
@@ -59,7 +55,6 @@ function loadYandexMaps(): Promise<void> {
       wait();
       return;
     }
-
     const script = document.createElement("script");
     script.src = `https://api-maps.yandex.ru/2.1/?apikey=${apiKey}&lang=ru_RU`;
     script.async = true;
@@ -76,10 +71,7 @@ function loadYandexMaps(): Promise<void> {
   return win.__ymapsPromise;
 }
 
-export default function EditLearningCenterModal({
-  center,
-  onClose,
-}: EditModalProps) {
+export default function EditLearningCenterModal({ center, onClose }: EditModalProps) {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -105,13 +97,10 @@ export default function EditLearningCenterModal({
   const placemarkRef = useRef<any>(null);
   const [mapLoading, setMapLoading] = useState(true);
   const [mapError, setMapError] = useState(false);
-  const [coords, setCoords] = useState<{ lat: string; lng: string } | null>(
-    null,
-  );
+  const [coords, setCoords] = useState<{ lat: string; lng: string } | null>(null);
   const [addressSearchQuery, setAddressSearchQuery] = useState("");
   const [isSearchingAddress, setIsSearchingAddress] = useState(false);
   const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
-  const suggestionsRef = useRef<HTMLDivElement>(null);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Center ma'lumotlarini formaga to'ldirish
@@ -119,7 +108,6 @@ export default function EditLearningCenterModal({
     if (center) {
       const lat = (center as any).latitude || "";
       const lng = (center as any).longitude || "";
-
       setFormData({
         name: center.name || "",
         slug: center.slug || "",
@@ -134,50 +122,115 @@ export default function EditLearningCenterModal({
         latitude: lat,
         longitude: lng,
       });
-
       setLogoPreview(center.logo || "");
       setAddressSearchQuery(center.address || "");
-
       if (lat && lng) {
         setCoords({ lat, lng });
       }
     }
   }, [center]);
 
-  // Map init
+  // ─── Marker qo'yish (overflow-hidden muammosini hal qilgan) ───────────────
+  const placeMarkerOnMap = useCallback(
+    (
+      coordinate: number[],
+      ymaps: any,
+      map: any,
+      reverseGeocode = true,
+      updateState = true,
+    ) => {
+      // Eski markerni o'chirish
+      if (placemarkRef.current) {
+        try {
+          map.geoObjects.remove(placemarkRef.current);
+        } catch (_) { }
+        placemarkRef.current = null;
+      }
+
+      const placemark = new ymaps.Placemark(
+        coordinate,
+        {},
+        {
+          preset: "islands#violetDotIconWithCaption",
+          iconColor: "#4F46E5",
+        },
+      );
+
+      map.geoObjects.add(placemark);
+      placemarkRef.current = placemark;
+
+      if (updateState) {
+        const latStr = coordinate[0].toFixed(6);
+        const lngStr = coordinate[1].toFixed(6);
+        setCoords({ lat: latStr, lng: lngStr });
+        setFormData((prev) => ({ ...prev, latitude: latStr, longitude: lngStr }));
+      }
+
+      if (reverseGeocode) {
+        ymaps.geocode(coordinate, { results: 1 }).then((res: any) => {
+          const first = res.geoObjects.get(0);
+          if (first) {
+            const addressText = first.getAddressLine();
+            setFormData((prev) => ({ ...prev, address: addressText }));
+            setAddressSearchQuery(addressText);
+          }
+        });
+      }
+    },
+    [],
+  );
+
+  // ─── Map init ─────────────────────────────────────────────────────────────
   useEffect(() => {
+    if (mapInstanceRef.current) return;
+
+
+    const lat = (center as any).latitude;
+    const lng = (center as any).longitude;
+    const hasCoords = !!(lat && lng);
+
     loadYandexMaps()
       .then(() => {
         if (!mapContainerRef.current) return;
+        if (mapInstanceRef.current) return;
+
         const ymaps = (window as any).ymaps;
 
-        const initialCenter =
-          formData.latitude && formData.longitude
-            ? [parseFloat(formData.latitude), parseFloat(formData.longitude)]
-            : [41.2995, 69.2401];
+        const initialCenter = hasCoords
+          ? [parseFloat(lat), parseFloat(lng)]
+          : [41.2995, 69.2401];
 
-        const map = new ymaps.Map(mapContainerRef.current, {
-          center: initialCenter,
-          zoom: formData.latitude ? 15 : 12,
-          controls: ["zoomControl"],
-        });
+        const map = new ymaps.Map(
+          mapContainerRef.current,
+          {
+            center: initialCenter,
+            zoom: hasCoords ? 15 : 12,
+            controls: ["zoomControl"],
+          },
+          // ✅ overflow: visible — marker icon clip bo'lmasligi uchun
+          { suppressMapOpenBlock: true },
+        );
 
         mapInstanceRef.current = map;
         setMapLoading(false);
 
         // Mavjud koordinatalar bo'lsa marker qo'yamiz
-        if (formData.latitude && formData.longitude) {
-          placeMarker(
-            [parseFloat(formData.latitude), parseFloat(formData.longitude)],
-            ymaps,
-            map,
-            false, // reverse geocode qilmasin — address allaqachon bor
-          );
+        if (hasCoords) {
+          // ymaps.ready ichida qo'shamiz — map to'liq tayyor bo'lishi uchun
+          ymaps.ready(() => {
+            placeMarkerOnMap(
+              [parseFloat(lat), parseFloat(lng)],
+              ymaps,
+              map,
+              false, // reverse geocode kerak emas, address allaqachon bor
+              false, // state yangilanmaydi (formData allaqachon to'ldirilgan)
+            );
+          });
         }
 
         map.events.add("click", (e: any) => {
           const coordinate = e.get("coords");
-          updateMarker(coordinate, ymaps, map);
+          placeMarkerOnMap(coordinate, ymaps, map, true, true);
         });
       })
       .catch(() => {
@@ -187,60 +240,20 @@ export default function EditLearningCenterModal({
 
     return () => {
       if (mapInstanceRef.current) {
-        mapInstanceRef.current.destroy();
+        try {
+          mapInstanceRef.current.destroy();
+        } catch (_) { }
         mapInstanceRef.current = null;
+        // ✅ Container ni ham tozalaymiz
+        if (mapContainerRef.current) {
+          mapContainerRef.current.innerHTML = "";
+        }
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Faqat marker qo'yish (reverse geocode opsional)
-  const placeMarker = (
-    coordinate: number[],
-    ymaps: any,
-    map: any,
-    reverseGeocode = true,
-    updateState = true, // <-- yangi parametr
-  ) => {
-    if (placemarkRef.current) {
-      map.geoObjects.remove(placemarkRef.current);
-    }
-
-    const placemark = new ymaps.Placemark(
-      coordinate,
-      {},
-      { preset: "islands#violetDotIconWithCaption", iconColor: "#4F46E5" },
-    );
-
-    map.geoObjects.add(placemark);
-    placemarkRef.current = placemark;
-
-    if (updateState) {
-      const latStr = coordinate[0].toFixed(6);
-      const lngStr = coordinate[1].toFixed(6);
-      setCoords({ lat: latStr, lng: lngStr });
-      setFormData((prev) => ({ ...prev, latitude: latStr, longitude: lngStr }));
-    }
-
-    if (reverseGeocode) {
-      ymaps.geocode(coordinate, { results: 1 }).then((res: any) => {
-        const first = res.geoObjects.get(0);
-        if (first) {
-          const addressText = first.getAddressLine();
-          setFormData((prev) => ({ ...prev, address: addressText }));
-          setAddressSearchQuery(addressText);
-        }
-      });
-    }
-  };
-  const updateMarker = useCallback(
-    (coordinate: number[], ymaps: any, map: any) => {
-      placeMarker(coordinate, ymaps, map, true);
-    },
-    [],
-  );
-
-  // Address search
+  // ─── Address search ───────────────────────────────────────────────────────
   const handleAddressSearch = (query: string) => {
     setAddressSearchQuery(query);
     setFormData((prev) => ({ ...prev, address: query }));
@@ -254,7 +267,6 @@ export default function EditLearningCenterModal({
     searchDebounceRef.current = setTimeout(async () => {
       const ymaps = (window as any).ymaps;
       if (!ymaps || !mapInstanceRef.current) return;
-
       setIsSearchingAddress(true);
       try {
         const res = await ymaps.geocode(query, { results: 5 });
@@ -274,31 +286,44 @@ export default function EditLearningCenterModal({
     }, 400);
   };
 
-  const selectSuggestion = (suggestion: { name: string; coords: number[] }) => {
-    const ymaps = (window as any).ymaps;
-    const map = mapInstanceRef.current;
-    if (!ymaps || !map) return;
+  const selectSuggestion = useCallback(
+    (suggestion: { name: string; coords: number[] }) => {
+      const ymaps = (window as any).ymaps;
+      const map = mapInstanceRef.current;
+      if (!ymaps || !map) return;
 
-    // 1. Avval xaritani ko'chirish
-    map.setCenter(suggestion.coords, 15, { duration: 400 }).then(() => {
-      // 2. Ko'chirilgandan KEYIN marker qo'yish
-      placeMarker(suggestion.coords, ymaps, map, false, false);
-    });
+      setAddressSuggestions([]);
+      setAddressSearchQuery(suggestion.name);
+      setFormData((prev) => ({
+        ...prev,
+        address: suggestion.name,
+        latitude: suggestion.coords[0].toFixed(6),
+        longitude: suggestion.coords[1].toFixed(6),
+      }));
+      setCoords({
+        lat: suggestion.coords[0].toFixed(6),
+        lng: suggestion.coords[1].toFixed(6),
+      });
 
-    // 3. Formani yangilash
-    setFormData((prev) => ({
-      ...prev,
-      address: suggestion.name,
-      latitude: suggestion.coords[0].toFixed(6),
-      longitude: suggestion.coords[1].toFixed(6),
-    }));
-    setCoords({
-      lat: suggestion.coords[0].toFixed(6),
-      lng: suggestion.coords[1].toFixed(6),
-    });
+      // Xaritani ko'chiramiz, keyin marker qo'yamiz
+      map.panTo(suggestion.coords, { flying: true, duration: 400 }).then(() => {
+        map.setZoom(15, { duration: 200 }).then(() => {
+          placeMarkerOnMap(suggestion.coords, ymaps, map, false, false);
+        });
+      });
+    },
+    [placeMarkerOnMap],
+  );
 
-    setAddressSearchQuery(suggestion.name);
-    setAddressSuggestions([]);
+  const clearMarker = () => {
+    if (placemarkRef.current && mapInstanceRef.current) {
+      try {
+        mapInstanceRef.current.geoObjects.remove(placemarkRef.current);
+      } catch (_) { }
+      placemarkRef.current = null;
+    }
+    setCoords(null);
+    setFormData((prev) => ({ ...prev, latitude: "", longitude: "" }));
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -312,10 +337,10 @@ export default function EditLearningCenterModal({
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputVal = e.target.value;
     if (inputVal.length < 5) {
-      setFormData({ ...formData, phone: "+998 " });
+      setFormData((prev) => ({ ...prev, phone: "+998 " }));
       return;
     }
-    setFormData({ ...formData, phone: formatPhoneInput(inputVal) });
+    setFormData((prev) => ({ ...prev, phone: formatPhoneInput(inputVal) }));
   };
 
   const { mutate: updateCenter, isPending } = useMutation({
@@ -331,11 +356,7 @@ export default function EditLearningCenterModal({
       data.append("subscription_expires", formData.subscription_expires);
       data.append("latitude", formData.latitude);
       data.append("longitude", formData.longitude);
-
-      if (logoFile) {
-        data.append("logo", logoFile);
-      }
-
+      if (logoFile) data.append("logo", logoFile);
       await API.put(`/api/v1/super-admin/centers/${center.id}/`, data);
     },
     onSuccess: () => {
@@ -346,8 +367,8 @@ export default function EditLearningCenterModal({
     onError: (err: any) => {
       toast.error(
         err?.response?.data?.message ||
-          err?.message ||
-          "Yangilashda xatolik yuz berdi",
+        err?.message ||
+        "Yangilashda xatolik yuz berdi",
       );
     },
   });
@@ -365,7 +386,7 @@ export default function EditLearningCenterModal({
     "w-full h-10 px-3 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900 transition-all text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500";
 
   return (
-    <div className="fixed inset-0 z-50 p-4">
+    <div className="fixed inset-0 z-50">
       <div className="fixed inset-0 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
         <div className="bg-white dark:bg-slate-900 rounded-xl p-6 max-w-xl w-full max-h-[90vh] overflow-y-auto relative z-10 shadow-2xl border border-slate-100 dark:border-slate-800">
           <button
@@ -395,6 +416,8 @@ export default function EditLearningCenterModal({
                     <Image
                       src={logoPreview}
                       alt="Logo"
+                      width={300}
+                      height={300}
                       className="w-full h-full object-cover"
                     />
                   ) : (
@@ -434,7 +457,7 @@ export default function EditLearningCenterModal({
                   type="text"
                   value={formData.name}
                   onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
+                    setFormData((prev) => ({ ...prev, name: e.target.value }))
                   }
                   className={inputCls}
                   required
@@ -448,10 +471,10 @@ export default function EditLearningCenterModal({
                   type="text"
                   value={formData.slug}
                   onChange={(e) =>
-                    setFormData({
-                      ...formData,
+                    setFormData((prev) => ({
+                      ...prev,
                       slug: e.target.value.toLowerCase().replace(/\s+/g, "-"),
-                    })
+                    }))
                   }
                   className={`${inputCls} font-mono`}
                   required
@@ -483,7 +506,7 @@ export default function EditLearningCenterModal({
                   type="email"
                   value={formData.email}
                   onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
+                    setFormData((prev) => ({ ...prev, email: e.target.value }))
                   }
                   className={inputCls}
                   required
@@ -499,13 +522,21 @@ export default function EditLearningCenterModal({
               </label>
 
               {/* Address search */}
-              <div className="relative" ref={suggestionsRef}>
+              <div className="relative">
                 <div className="relative flex items-center">
                   <Search className="absolute left-3 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
                   <input
                     type="text"
                     value={addressSearchQuery}
                     onChange={(e) => handleAddressSearch(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (addressSuggestions.length > 0) {
+                          selectSuggestion(addressSuggestions[0]);
+                        }
+                      }
+                    }}
                     placeholder={
                       t("centers.address_placeholder") ||
                       "Manzilni kiriting yoki xaritadan tanlang..."
@@ -546,30 +577,40 @@ export default function EditLearningCenterModal({
                 )}
               </div>
 
-              {/* Map */}
-              <div className="relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 mt-2">
+              {/* ✅ Map wrapper — overflow-hidden FAQAT tashqi border uchun,
+                   map container o'zi overflow: visible bo'ladi */}
+              <div className="relative mt-2 rounded-xl border border-slate-200 dark:border-slate-700">
+                {/* Loading overlay */}
                 {mapLoading && (
-                  <div className="absolute inset-0 z-10 bg-slate-100 dark:bg-slate-800 flex flex-col items-center justify-center gap-2">
+                  <div className="absolute inset-0 z-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex flex-col items-center justify-center gap-2">
                     <Loader2 className="w-6 h-6 text-indigo-500 animate-spin" />
                     <span className="text-xs text-slate-500">
                       Xarita yuklanmoqda...
                     </span>
                   </div>
                 )}
+                {/* Error overlay */}
                 {mapError && (
-                  <div className="absolute inset-0 z-10 bg-slate-100 dark:bg-slate-800 flex flex-col items-center justify-center gap-2">
+                  <div className="absolute inset-0 z-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex flex-col items-center justify-center gap-2">
                     <MapPin className="w-6 h-6 text-red-400" />
                     <span className="text-xs text-slate-500">
                       Xarita yuklanmadi
                     </span>
                   </div>
                 )}
+                {/* Hint */}
                 {!mapLoading && !mapError && !coords && (
                   <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 bg-white/90 dark:bg-slate-900/90 text-slate-600 dark:text-slate-300 text-[11px] font-medium px-3 py-1.5 rounded-full shadow-md border border-slate-200 dark:border-slate-700 whitespace-nowrap pointer-events-none backdrop-blur-sm">
                     📍 Joylashuvni belgilash uchun xaritaga bosing
                   </div>
                 )}
-                <div ref={mapContainerRef} className="w-full h-[220px]" />
+
+                {/* ✅ Map container — overflow visible, border-radius clip yo'q */}
+                <div
+                  ref={mapContainerRef}
+                  className="w-full h-[220px] rounded-xl"
+                  style={{ overflow: "visible" }}
+                />
               </div>
 
               {/* Coords badge */}
@@ -581,9 +622,7 @@ export default function EditLearningCenterModal({
                       Lat:
                     </span>{" "}
                     {coords.lat}
-                    <span className="mx-2 text-slate-300 dark:text-slate-600">
-                      |
-                    </span>
+                    <span className="mx-2 text-slate-300 dark:text-slate-600">|</span>
                     <span className="font-semibold text-indigo-600 dark:text-indigo-400">
                       Lng:
                     </span>{" "}
@@ -591,20 +630,7 @@ export default function EditLearningCenterModal({
                   </span>
                   <button
                     type="button"
-                    onClick={() => {
-                      if (placemarkRef.current && mapInstanceRef.current) {
-                        mapInstanceRef.current.geoObjects.remove(
-                          placemarkRef.current,
-                        );
-                        placemarkRef.current = null;
-                      }
-                      setCoords(null);
-                      setFormData((prev) => ({
-                        ...prev,
-                        latitude: "",
-                        longitude: "",
-                      }));
-                    }}
+                    onClick={clearMarker}
                     className="ml-auto text-slate-400 hover:text-red-400 cursor-pointer transition-colors"
                   >
                     <X className="w-3.5 h-3.5" />
@@ -622,15 +648,13 @@ export default function EditLearningCenterModal({
                 <select
                   value={formData.status}
                   onChange={(e) =>
-                    setFormData({ ...formData, status: e.target.value })
+                    setFormData((prev) => ({ ...prev, status: e.target.value }))
                   }
                   className={inputCls}
                 >
                   <option value="active">{t("centers.status.active")}</option>
                   <option value="pending">{t("centers.status.pending")}</option>
-                  <option value="inactive">
-                    {t("centers.status.inactive")}
-                  </option>
+                  <option value="inactive">{t("centers.status.inactive")}</option>
                 </select>
               </div>
               <div className="space-y-1.5">
@@ -641,10 +665,10 @@ export default function EditLearningCenterModal({
                   type="date"
                   value={formData.subscription_expires}
                   onChange={(e) =>
-                    setFormData({
-                      ...formData,
+                    setFormData((prev) => ({
+                      ...prev,
                       subscription_expires: e.target.value,
-                    })
+                    }))
                   }
                   className={inputCls}
                   required

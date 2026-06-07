@@ -6,7 +6,8 @@ import Image from "next/image";
 
 export interface IDirector {
   id: string;
-  full_name: string;
+  first_name: string;   // API formatiga moslandi
+  last_name: string;    // API formatiga moslandi
   phone: string;
   email: string;
   avatar?: string | null;
@@ -23,8 +24,6 @@ interface DirectorItemProps {
 
 const BASE_URL = process.env.NEXT_PUBLIC_DataBaseURL;
 
-
-
 export default function DirectorItem({
   director,
   viewMode,
@@ -32,12 +31,25 @@ export default function DirectorItem({
   onDelete,
   formatPhone,
 }: DirectorItemProps) {
+  // Ism va familiyani birlashtiramiz, agar kelmay qolsa "Ismsiz" deb ko'rsatiladi
+  const fullName = director.first_name || director.last_name
+    ? `${director.first_name || ""} ${director.last_name || ""}`.trim()
+    : "—";
+
   const formattedDate = director.created_at
     ? new Date(director.created_at).toLocaleDateString("uz-UZ")
     : "—";
 
-  console.log(BASE_URL);
-
+  const getAvatarUrl = (avatarPath: string | null | undefined) => {
+    if (!avatarPath) return "/default-avatar.png";
+    if (avatarPath.includes("edumrx-1.onrender.com")) {
+      return avatarPath.replace("edumrx-1.onrender.com", "www.edumrx.uz");
+    }
+    if (avatarPath.startsWith("http")) {
+      return avatarPath;
+    }
+    return `${BASE_URL?.replace(/\/$/, "")}/${avatarPath.replace(/^\//, "")}`;
+  };
 
   if (viewMode === "list") {
     return (
@@ -48,17 +60,11 @@ export default function DirectorItem({
             <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center overflow-hidden shrink-0">
               {director.avatar ? (
                 <Image
-                  src={
-                    director?.avatar
-                      ? director.avatar.includes("edumrx-1.onrender.com")
-                        ? director.avatar.replace("edumrx-1.onrender.com", "www.edumrx.uz")
-                        : director.avatar.startsWith("http")
-                          ? director.avatar // Agar boshqa to'g'ri http link bo'lsa tegmaydi
-                          : `${BASE_URL?.replace(/\/$/, "")}/${director.avatar.replace(/^\//, "")}`
-                      : "/default-avatar.png"
-                  } alt="Avatar"
+                  src={getAvatarUrl(director.avatar)}
+                  alt={fullName}
                   width={40}
                   height={40}
+                  className="w-full h-full object-cover"
                 />
               ) : (
                 <User className="w-5 h-5 text-slate-400" />
@@ -66,7 +72,7 @@ export default function DirectorItem({
             </div>
             <div>
               <div className="font-semibold text-slate-900 dark:text-slate-100 leading-tight">
-                {director.full_name}
+                {fullName}
               </div>
               <div className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5 font-mono">
                 ID: {director.id.slice(0, 8)}...
@@ -108,7 +114,7 @@ export default function DirectorItem({
               <Edit2 className="w-3.5 h-3.5" />
             </button>
             <button
-              onClick={() => onDelete(director.id, director.full_name)}
+              onClick={() => onDelete(director.id, fullName)}
               className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950 border border-transparent hover:border-red-100 dark:hover:border-red-900 transition-all cursor-pointer"
               title="O'chirish"
             >
@@ -128,10 +134,10 @@ export default function DirectorItem({
           <div className="w-12 h-12 rounded-full bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex items-center justify-center overflow-hidden shrink-0">
             {director.avatar ? (
               <Image
-                width={40}
-                height={40}
-                src={director.avatar}
-                alt={director.full_name}
+                width={48}
+                height={48}
+                src={getAvatarUrl(director.avatar)}
+                alt={fullName}
                 className="w-full h-full object-cover"
               />
             ) : (
@@ -140,7 +146,7 @@ export default function DirectorItem({
           </div>
           <div>
             <h4 className="font-bold text-slate-900 dark:text-slate-100 text-base line-clamp-1">
-              {director.full_name}
+              {fullName}
             </h4>
             <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500 block mt-0.5">
               {t("directors.role")}
@@ -173,7 +179,7 @@ export default function DirectorItem({
             <Edit2 className="w-3 h-3" />
           </button>
           <button
-            onClick={() => onDelete(director.id, director.full_name)}
+            onClick={() => onDelete(director.id, fullName)}
             className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-500 dark:text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950 border border-slate-100 dark:border-slate-700 hover:border-red-100 dark:hover:border-red-900 transition-all cursor-pointer"
           >
             <Trash2 className="w-3 h-3" />

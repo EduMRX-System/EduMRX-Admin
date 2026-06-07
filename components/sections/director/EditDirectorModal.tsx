@@ -11,7 +11,7 @@ import { toast } from "react-toastify";
 
 import { PhoneInput } from "@/components/ui/PhoneInput";
 import { PasswordInput } from "@/components/ui/PasswordInput";
-import { IDirector } from "./DirectorItem";
+import { IDirector } from "@/types"; // Turlar faylidan to'g'ri import qilindi
 import { t } from "i18next";
 
 const schema = yup.object({
@@ -29,13 +29,17 @@ const schema = yup.object({
 
 type FormData = yup.InferType<typeof schema>;
 
-export default function EditDirectorModal({ director, onClose }: { director: IDirector; onClose?: () => void }) {
+export default function EditDirectorModal({ director, onClose }: { director: any; onClose?: () => void }) {
     const queryClient = useQueryClient();
     const [isMounted, setIsMounted] = useState(false);
 
     const { register, handleSubmit, control, setValue, setError, formState: { errors } } = useForm({
         resolver: yupResolver(schema),
         defaultValues: {
+            first_name: "",
+            last_name: "",
+            email: "",
+            phone: "",
             password: ""
         }
     });
@@ -43,11 +47,25 @@ export default function EditDirectorModal({ director, onClose }: { director: IDi
     useEffect(() => {
         setIsMounted(true);
         if (director) {
-            const nameParts = director.full_name?.trim().split(" ") || [];
-            setValue("first_name", nameParts[0] || "");
-            setValue("last_name", nameParts.slice(1).join(" ") || "");
+            // 1. Agar API dan bir marta alohida birinchi va oxirgi ism kelsa, o'shani to'g'ridan-to'g'ri qo'yamiz
+            if (director.first_name || director.last_name) {
+                setValue("first_name", director.first_name || "");
+                setValue("last_name", director.last_name || "");
+            }
+            // 2. Agar faqat full_name satri kelsa, uni xavfsiz va aniq formatda ajratamiz
+            else if (director.full_name) {
+                const nameParts = director.full_name.trim().split(/\s+/); // Bir nechta bo'shliqlarni ham hisobga oladi
+                if (nameParts.length === 1) {
+                    setValue("first_name", nameParts[0]);
+                    setValue("last_name", "");
+                } else {
+                    setValue("first_name", nameParts[0]); // Birinchi so'z - Ism
+                    setValue("last_name", nameParts.slice(1).join(" ")); // Qolgan qismi - Familiya
+                }
+            }
+
             setValue("email", director.email || "");
-            setValue("phone", director.phone);
+            setValue("phone", director.phone || "");
         }
     }, [director, setValue]);
 
@@ -77,12 +95,10 @@ export default function EditDirectorModal({ director, onClose }: { director: IDi
             if (serverErrors && typeof serverErrors === "object") {
                 Object.keys(serverErrors).forEach((key) => {
                     const errorValue = serverErrors[key];
-
                     const errorMessage = Array.isArray(errorValue) ? errorValue[0] : errorValue;
 
                     if (errorMessage) {
                         toast.error(errorMessage);
-
                         setError(key as any, {
                             type: "server",
                             message: errorMessage
@@ -98,8 +114,8 @@ export default function EditDirectorModal({ director, onClose }: { director: IDi
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
-            <div className={`bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 rounded-xl max-w-xl w-full relative z-10 shadow-2xl transition-all ${isMounted ? "opacity-100" : "opacity-0"}`}>
-                <button type="button" onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+            <div className={`bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 rounded-xl max-w-xl w-full relative z-10 shadow-2xl transition-all duration-200 ${isMounted ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}>
+                <button type="button" onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
                     <X className="w-5 h-5" />
                 </button>
 
@@ -144,7 +160,6 @@ export default function EditDirectorModal({ director, onClose }: { director: IDi
                         {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
                     </div>
 
-                    {/* Parol inputi (Ixtiyoriy ekanligi placeholder orqali bildirilgan) */}
                     <div>
                         <PasswordInput
                             register={register("password")}
@@ -158,7 +173,7 @@ export default function EditDirectorModal({ director, onClose }: { director: IDi
                     <button
                         type="submit"
                         disabled={isPending}
-                        className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold flex items-center justify-center transition-colors disabled:opacity-60"
+                        className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold flex items-center justify-center transition-colors disabled:opacity-60 cursor-pointer"
                     >
                         {isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : t("directors.save_btn")}
                     </button>

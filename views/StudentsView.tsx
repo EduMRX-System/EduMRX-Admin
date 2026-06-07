@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { API } from "@/services/api";
-import { Loader2, AlertCircle, User, Plus, Search, X } from "lucide-react";
+import { AlertCircle, User, Plus, Search, X } from "lucide-react";
 import { toast } from "react-toastify";
 
 import Title from "@/components/ui/Title";
@@ -19,7 +19,7 @@ import { IStudent } from "@/types";
 interface IStudentsResponse {
   results?: IStudent[];
   data?: IStudent[];
-  count?: number; // Pagination uchun jami elementlar soni
+  count?: number;
 }
 
 export default function StudentsView() {
@@ -39,18 +39,16 @@ export default function StudentsView() {
   const [editingStudent, setEditingStudent] = useState<IStudent | null>(null);
   const [deletingStudent, setDeletingStudent] = useState<IStudent | null>(null);
 
-
-
   useEffect(() => {
     const handler = setTimeout(() => {
       const cleaned = search.trim();
       setDebouncedSearch(cleaned === "" ? "" : search);
-      setPage(1); // Qidiruv o'zgarganda birinchi sahifaga qaytarish
+      setPage(1);
     }, 500);
     return () => clearTimeout(handler);
   }, [search]);
 
-  // Talabalarni yuklash (Pagination va Search bilan)
+  // Talabalarni yuklash
   const { data: studentsData, isLoading, isError, error } = useQuery({
     queryKey: ["students", page, pageSize, debouncedSearch],
     queryFn: async () => {
@@ -70,6 +68,9 @@ export default function StudentsView() {
   const totalCount = (studentsData as any)?.count || 0;
   const totalPages = Math.ceil(totalCount / pageSize);
 
+  // Belgingalgan qatorlar soniga mos skeleton massivi
+  const dummySkeletons = Array.from({ length: pageSize });
+
   // O'chirish mutationi
   const { mutate: deleteStudent, isPending: isDeletePending } = useMutation({
     mutationFn: async (id: string) => {
@@ -86,11 +87,11 @@ export default function StudentsView() {
   });
 
   const formatPhoneView = (phone: string) => {
-    const clean = phone.replace(/\D/g, "");
+    const clean = phone?.replace(/\D/g, "") || "";
     if (clean.length === 12) {
       return `+998 (${clean.slice(3, 5)}) ${clean.slice(5, 8)}-${clean.slice(8, 10)}-${clean.slice(10)}`;
     }
-    return phone;
+    return phone || "—";
   };
 
   return (
@@ -98,9 +99,7 @@ export default function StudentsView() {
       {/* HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <Title text={t("students.title", "Students")} />
-          </div>
+          <Title text={t("students.title", "Students")} />
           <Text text={t("students.subtitle", "Manage and track student enrollment, performance, and status.")} />
         </div>
         <button
@@ -124,7 +123,7 @@ export default function StudentsView() {
         {search && (
           <button
             onClick={() => setSearch("")}
-            className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+            className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -138,16 +137,7 @@ export default function StudentsView() {
         </div>
       )}
 
-      {/* STATES */}
-      {isLoading && !debouncedSearch && (
-        <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 shadow-xs">
-          <Loader2 className="w-8 h-8 text-indigo-600 dark:text-indigo-400 animate-spin" />
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-3 font-medium">
-            {t("students.loading", "Talabalar ro'yxati yuklanmoqda...")}
-          </p>
-        </div>
-      )}
-
+      {/* ERROR STATE */}
       {isError && (
         <div className="flex flex-col items-center justify-center py-12 px-4 bg-red-50/50 dark:bg-red-950/20 rounded-xl border border-red-100 dark:border-red-900/50 text-center">
           <AlertCircle className="w-10 h-10 text-red-500 dark:text-red-400 mb-3" />
@@ -156,49 +146,6 @@ export default function StudentsView() {
           </h3>
           <p className="text-sm text-red-600 dark:text-red-300 mt-1 max-w-md">{(error as any)?.message}</p>
         </div>
-      )}
-
-      {/* JADVAL VA PAGINATION */}
-      {!isLoading && !isError && studentsList.length > 0 && (
-        <>
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xs border border-slate-100 dark:border-slate-800 overflow-hidden animate-in fade-in">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">
-                    <th className="py-3.5 px-5">{t("students.table.name", "Student Name")}</th>
-                    <th className="py-3.5 px-5">{t("students.table.contact", "Contact Info")}</th>
-                    <th className="py-3.5 px-5">{t("students.table.center", "Learning Center")}</th>
-                    <th className="py-3.5 px-5">{t("students.table.address", "Location / Address")}</th>
-                    <th className="py-3.5 px-5">{t("students.table.dob", "Date of Birth")}</th>
-                    <th className="py-3.5 px-5 text-right">{t("students.table.actions", "Actions")}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm text-slate-700 dark:text-slate-300">
-                  {studentsList.map((student: IStudent) => (
-                    <StudentItem
-                      key={student.id}
-                      student={student}
-                      onEdit={(s) => setEditingStudent(s)}
-                      onDelete={(s) => setDeletingStudent(s)}
-                      formatPhone={formatPhoneView}
-                    />
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* PAGINATION CONTROL INTEGRATSIYASI */}
-          <PaginationControl
-            totalCount={totalCount}
-            page={page}
-            totalPages={totalPages}
-            pageSize={pageSize}
-            setPage={setPage}
-            setPageSize={setPageSize}
-          />
-        </>
       )}
 
       {/* BO'SH HOLAT */}
@@ -220,6 +167,89 @@ export default function StudentsView() {
           >
             <Plus className="w-3.5 h-3.5" /> {t("students.addBtnShort", "Student qo'shish")}
           </button>
+        </div>
+      )}
+
+      {/* JADVAL SKELETON VA HAQIQIY MA'LUMOTLAR */}
+      {(isLoading || (!isError && studentsList.length > 0)) && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xs border border-slate-100 dark:border-slate-800 overflow-hidden transition-colors">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">
+                  <th className="py-3.5 px-5">{t("students.table.name", "Student Name")}</th>
+                  <th className="py-3.5 px-5">{t("students.table.contact", "Contact Info")}</th>
+                  <th className="py-3.5 px-5">{t("students.table.center", "Learning Center")}</th>
+                  <th className="py-3.5 px-5">{t("students.table.address", "Location / Address")}</th>
+                  <th className="py-3.5 px-5">{t("students.table.dob", "Date of Birth")}</th>
+                  <th className="py-3.5 px-5 text-right">{t("students.table.actions", "Actions")}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm text-slate-700 dark:text-slate-300">
+                {isLoading ? (
+                  dummySkeletons.map((_, i) => (
+                    <tr key={i} className="animate-pulse">
+                      {/* Name Skeleton */}
+                      <td className="py-4 px-5">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 bg-slate-200 dark:bg-slate-800 rounded-full" />
+                          <div className="space-y-2">
+                            <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded-sm w-32" />
+                            <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded-sm w-16" />
+                          </div>
+                        </div>
+                      </td>
+                      {/* Contact Skeleton */}
+                      <td className="py-4 px-5">
+                        <div className="space-y-2">
+                          <div className="h-3.5 bg-slate-200 dark:bg-slate-800 rounded-sm w-28" />
+                          <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded-sm w-24" />
+                        </div>
+                      </td>
+                      {/* Center Skeleton */}
+                      <td className="py-4 px-5">
+                        <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded-sm w-28" />
+                      </td>
+                      {/* Address Skeleton */}
+                      <td className="py-4 px-5">
+                        <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded-sm w-36" />
+                      </td>
+                      {/* DOB Skeleton */}
+                      <td className="py-4 px-5">
+                        <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded-sm w-20" />
+                      </td>
+                      {/* Actions Skeleton */}
+                      <td className="py-4 px-5 text-right">
+                        <div className="h-8 bg-slate-200 dark:bg-slate-800 rounded-lg w-16 inline-block" />
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  studentsList.map((student: IStudent) => (
+                    <StudentItem
+                      key={student.id}
+                      student={student}
+                      onEdit={(s) => setEditingStudent(s)}
+                      onDelete={(s) => setDeletingStudent(s)}
+                      formatPhone={formatPhoneView}
+                    />
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* PAGINATION CONTROL CONTAINER */}
+          <div className="p-4 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800">
+            <PaginationControl
+              totalCount={totalCount}
+              page={page}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              setPage={setPage}
+              setPageSize={setPageSize}
+            />
+          </div>
         </div>
       )}
 

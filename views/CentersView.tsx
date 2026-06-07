@@ -3,15 +3,14 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { API } from "@/services/api";
-import { ILearningCenter, IAPIResponse } from "@/types";
-import { LayoutGrid, List, Plus, Loader2, AlertCircle, Building2, ChevronLeft, ChevronRight, Search, X } from "lucide-react";
+import { ILearningCenter } from "@/types";
+import { LayoutGrid, List, Plus, AlertCircle, Building2, Search, X } from "lucide-react";
 import AddLearningCenterModal from "@/components/sections/learningCenter/addLearningCenterModal";
 import Title from "@/components/ui/Title";
 import Text from "@/components/ui/Text";
 import CenterItem from "@/components/sections/learningCenter/CenterItem";
 import DeleteLearningCenterModal from "@/components/sections/learningCenter/DeleteLearningCenterModal";
 import EditLearningCenterModal from "@/components/sections/learningCenter/EditLearningCenterModal";
-import ReactPaginate from "react-paginate";
 import PaginationControl from "@/components/ui/PaginationControl";
 import { t } from "i18next";
 
@@ -50,6 +49,9 @@ export default function LearningCentersList() {
     const totalCount = data?.count || 0;
     const totalPages = Math.ceil(totalCount / pageSize);
 
+    // Belgingalgan pageSize miqdoricha miltillovchi qatorlarni chiqarish uchun massiv
+    const dummySkeletons = Array.from({ length: pageSize });
+
     const formatPhoneView = (phone: string) => {
         const clean = phone?.replace(/\D/g, "") || "";
         if (clean.length === 12) {
@@ -68,7 +70,6 @@ export default function LearningCentersList() {
         if (diffDays <= 7) return { text: `${diffDays} kun qoldi`, cls: "bg-amber-50 text-amber-700 border-amber-200" };
         return { text: dateStr, cls: "bg-slate-50 text-slate-600 border-slate-200" };
     };
-
 
     return (
         <div className="w-full space-y-6">
@@ -122,22 +123,12 @@ export default function LearningCentersList() {
                 {search && (
                     <button
                         onClick={() => setSearch("")}
-                        className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                        className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer"
                     >
                         <X className="w-4 h-4" />
                     </button>
                 )}
             </div>
-
-            {/* LOADING */}
-            {isLoading && (
-                <div className="flex flex-col items-center justify-center py-24 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 shadow-xs transition-colors">
-                    <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-3 font-medium">
-                        {t("centers.loading")}
-                    </p>
-                </div>
-            )}
 
             {/* ERROR */}
             {isError && (
@@ -180,25 +171,58 @@ export default function LearningCentersList() {
                 </div>
             )}
 
-            {/* LIST / GRID */}
-            {!isLoading && !isError && centersList.length > 0 && (
-                <>
+            {/* SKELETON YOKI HAQIQIY MA'LUMOTLAR JADVALI */}
+            {(isLoading || (!isError && centersList.length > 0)) && (
+                <div className={`${viewMode === "list" ? "bg-white dark:bg-slate-900 rounded-xl shadow-xs border border-slate-100 dark:border-slate-800 overflow-hidden transition-colors" : ""}`}>
                     {viewMode === "list" ? (
-                        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xs border border-slate-100 dark:border-slate-800 overflow-hidden transition-colors">
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left border-collapse">
-                                    <thead>
-                                        <tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-[11px] font-bold uppercase tracking-wider">
-                                            <th className="py-3 px-5">{t("centers.col_details")}</th>
-                                            <th className="py-3 px-5">{t("centers.col_contact")}</th>
-                                            <th className="py-3 px-5">{t("centers.col_location")}</th>
-                                            <th className="py-3 px-5">{t("centers.col_status")}</th>
-                                            <th className="py-3 px-5">{t("centers.col_subscription")}</th>
-                                            <th className="py-3 px-5 text-right">{t("directors.col_actions")}</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm text-slate-700 dark:text-slate-300">
-                                        {centersList.map((center: ILearningCenter) => (
+                        /* ================== TABLE (LIST) SKELETON & DATA ================== */
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-[11px] font-bold uppercase tracking-wider">
+                                        <th className="py-3 px-5">{t("centers.col_details")}</th>
+                                        <th className="py-3 px-5">{t("centers.col_contact")}</th>
+                                        <th className="py-3 px-5">{t("centers.col_location")}</th>
+                                        <th className="py-3 px-5">{t("centers.col_status")}</th>
+                                        <th className="py-3 px-5">{t("centers.col_subscription")}</th>
+                                        <th className="py-3 px-5 text-right">{t("directors.col_actions")}</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm text-slate-700 dark:text-slate-300">
+                                    {isLoading ? (
+                                        dummySkeletons.map((_, i) => (
+                                            <tr key={i} className="animate-pulse">
+                                                <td className="py-4 px-5">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-10 h-10 bg-slate-200 dark:bg-slate-800 rounded-xl" />
+                                                        <div className="space-y-2">
+                                                            <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded-sm w-32" />
+                                                            <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded-sm w-20" />
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="py-4 px-5">
+                                                    <div className="space-y-2">
+                                                        <div className="h-3.5 bg-slate-200 dark:bg-slate-800 rounded-sm w-28" />
+                                                        <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded-sm w-24" />
+                                                    </div>
+                                                </td>
+                                                <td className="py-4 px-5">
+                                                    <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded-sm w-24" />
+                                                </td>
+                                                <td className="py-4 px-5">
+                                                    <div className="h-6 bg-slate-200 dark:bg-slate-800 rounded-md w-16" />
+                                                </td>
+                                                <td className="py-4 px-5">
+                                                    <div className="h-6 bg-slate-200 dark:bg-slate-800 rounded-md w-24" />
+                                                </td>
+                                                <td className="py-4 px-5 text-right">
+                                                    <div className="h-8 bg-slate-200 dark:bg-slate-800 rounded-lg w-16 inline-block" />
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        centersList.map((center: ILearningCenter) => (
                                             <CenterItem
                                                 key={center.id}
                                                 center={center}
@@ -208,38 +232,68 @@ export default function LearningCentersList() {
                                                 formatPhone={formatPhoneView}
                                                 getSubscriptionCls={getSubscriptionStatus}
                                             />
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
                         </div>
                     ) : (
+                        /* ================== GRID CARD SKELETON & DATA ================== */
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                            {centersList.map((center: ILearningCenter) => (
-                                <CenterItem
-                                    key={center.id}
-                                    center={center}
-                                    viewMode="grid"
-                                    onEdit={(c: any) => setEditTarget(c)}
-                                    onDelete={(id: string, name: string) => setDeleteTarget({ id, name })}
-                                    formatPhone={formatPhoneView}
-                                    getSubscriptionCls={getSubscriptionStatus}
-                                />
-                            ))}
+                            {isLoading ? (
+                                dummySkeletons.map((_, i) => (
+                                    <div key={i} className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-100 dark:border-slate-800 space-y-4 animate-pulse">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-11 h-11 bg-slate-200 dark:bg-slate-800 rounded-xl" />
+                                                <div className="space-y-2">
+                                                    <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded-sm w-28" />
+                                                    <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded-sm w-16" />
+                                                </div>
+                                            </div>
+                                            <div className="h-6 bg-slate-200 dark:bg-slate-800 rounded-md w-14" />
+                                        </div>
+                                        <div className="space-y-2 pt-2 border-t border-slate-50 dark:border-slate-800">
+                                            <div className="h-3.5 bg-slate-200 dark:bg-slate-800 rounded-sm w-full" />
+                                            <div className="h-3.5 bg-slate-200 dark:bg-slate-800 rounded-sm w-2/3" />
+                                        </div>
+                                        <div className="flex items-center justify-between pt-2">
+                                            <div className="h-6 bg-slate-200 dark:bg-slate-800 rounded-md w-24" />
+                                            <div className="h-8 bg-slate-200 dark:bg-slate-800 rounded-lg w-16" />
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                centersList.map((center: ILearningCenter) => (
+                                    <CenterItem
+                                        key={center.id}
+                                        center={center}
+                                        viewMode="grid"
+                                        onEdit={(c: any) => setEditTarget(c)}
+                                        onDelete={(id: string, name: string) => setDeleteTarget({ id, name })}
+                                        formatPhone={formatPhoneView}
+                                        getSubscriptionCls={getSubscriptionStatus}
+                                    />
+                                ))
+                            )}
                         </div>
                     )}
 
-                    <PaginationControl
-                        totalCount={data?.count || 0}
-                        page={page}
-                        totalPages={totalPages}
-                        pageSize={pageSize}
-                        setPage={setPage}
-                        setPageSize={setPageSize}
-                    />
-                </>
+                    {/* PAGINATION CONTROL (Har doim to'g'ri blokda ko'rinadi) */}
+                    <div className={`p-4 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 ${viewMode === "grid" ? "rounded-xl border shadow-xs mt-6" : ""}`}>
+                        <PaginationControl
+                            totalCount={totalCount}
+                            page={page}
+                            totalPages={totalPages}
+                            pageSize={pageSize}
+                            setPage={setPage}
+                            setPageSize={setPageSize}
+                        />
+                    </div>
+                </div>
             )}
 
+            {/* MODALLAR */}
             {isAddOpen && <AddLearningCenterModal onClose={() => setIsAddOpen(false)} />}
             {editTarget && <EditLearningCenterModal center={editTarget} onClose={() => setEditTarget(null)} />}
             {deleteTarget && (

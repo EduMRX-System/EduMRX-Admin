@@ -54,7 +54,7 @@ export default function AttendanceOverview() {
     const periods: Period[] = ["This Week", "Last Week", "This Month"];
 
     useEffect(() => {
-        if (!tokens?.access_token) return;
+        if (!tokens?.access) return;
 
         const fetchData = async () => {
             setLoading(true);
@@ -64,7 +64,7 @@ export default function AttendanceOverview() {
                     `/api/v1/attendance/overview/?period=${PERIOD_MAP[selected]}`,
                     {
                         headers: {
-                            Authorization: `Bearer ${tokens.access_token}`,
+                            Authorization: `Bearer ${tokens.access}`,
                         },
                     }
                 );

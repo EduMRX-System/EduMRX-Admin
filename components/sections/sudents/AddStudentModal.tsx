@@ -6,7 +6,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { API } from "@/services/api";
-import { User, Eye, EyeOff, Notebook, X, Loader2 } from "lucide-react";
+import { User, Eye, EyeOff, MapPin, Notebook, X, Loader2 } from "lucide-react";
 import { toast } from "react-toastify";
 
 import { ChevronDown, Search } from "lucide-react";
@@ -38,6 +38,7 @@ const schema = yup.object({
         .min(6, "Parol kamida 6 ta belgidan iborat bo'lishi kerak"),
     center: yup.string().uuid("O'quv markazi UUID formatida bo'lishi shart").required("Markazni tanlash shart"),
     date_of_birth: yup.string().required("Tug'ilgan sana kiritilishi shart"),
+    address: yup.string().required("Manzil kiritilishi shart"),
     notes: yup.string().optional(),
     status: yup.string().oneOf(["active", "frozen", "inactive"]).required("Status shart"),
 }).required();
@@ -73,6 +74,7 @@ export default function AddStudentModal({ onClose }: AddStudentModalProps) {
         defaultValues: {
             status: "active",
             date_of_birth: new Date().toISOString().split('T')[0],
+            address: ""
         }
     });
 
@@ -89,7 +91,7 @@ export default function AddStudentModal({ onClose }: AddStudentModalProps) {
     );
 
     const { mutate: addStudent, isPending } = useMutation({
-        mutationFn: async (body: any) => {
+        mutationFn: async (body: FormData) => {
             const res = await API.post("/api/v1/super-admin/students/", body, {
                 headers: {
                     "Content-Type": "application/json",
@@ -102,13 +104,10 @@ export default function AddStudentModal({ onClose }: AddStudentModalProps) {
             reset();
             setPhoneDisplay("");
             setShowPassword(false);
-            setSelectedCenter(null);
 
             queryClient.invalidateQueries({
                 queryKey: ["students-list"],
-                exact: false, 
             });
-
             onClose();
         },
         onError: (err: any) => {
@@ -118,20 +117,15 @@ export default function AddStudentModal({ onClose }: AddStudentModalProps) {
 
     const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const raw = e.target.value.replace(/\D/g, "");
-        const local = raw.slice(0, 9);
+        const withPrefix = raw.startsWith("998") ? raw : "998" + raw.replace(/^998/, "");
+        const local = withPrefix.slice(3, 12);
         setPhoneDisplay(formatUzPhone(local));
-        const full = "+998" + local;
+        const full = "998" + local;
         setValue("phone", full, { shouldValidate: true });
     };
 
     const onSubmit = (data: FormData) => {
-        const reqBody: any = { ...data };
-        delete reqBody.lat;
-        delete reqBody.long;
-        delete reqBody.latitude;
-        delete reqBody.longitude;
-
-        addStudent(reqBody);
+        addStudent(data);
     };
 
     return (
@@ -164,7 +158,7 @@ export default function AddStudentModal({ onClose }: AddStudentModalProps) {
 
                 {/* TITLE */}
                 <h3 className="text-slate-800 dark:text-slate-100 text-[18px] font-semibold mb-4">
-                    {t("students.modal.addTitle", "Yangi talaba qo'shish")}
+                    {t("students.modal.addTitle", "Add New Student")}
                 </h3>
 
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -172,12 +166,12 @@ export default function AddStudentModal({ onClose }: AddStudentModalProps) {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="text-[14px] text-slate-700 dark:text-slate-300 mb-1 block font-semibold">
-                                {t("students.modal.firstName", "Ism")}
+                                {t("students.modal.firstName", "First Name")}
                             </label>
                             <input
                                 {...register("first_name")}
                                 type="text"
-                                placeholder={t("students.modal.placeholder.firstName", "Masalan: Husan")}
+                                placeholder={t("students.modal.placeholder.firstName", "John")}
                                 className={`border rounded-lg w-full h-[40px] px-3 text-[14px] bg-transparent text-slate-900 dark:text-slate-100 outline-none transition-all ${errors.first_name
                                     ? "border-red-400 bg-red-50/10 dark:bg-red-950/10"
                                     : "border-slate-300 dark:border-slate-700 focus:border-indigo-500 dark:focus:border-indigo-400"
@@ -189,12 +183,12 @@ export default function AddStudentModal({ onClose }: AddStudentModalProps) {
                         </div>
                         <div>
                             <label className="text-[14px] text-slate-700 dark:text-slate-300 mb-1 block font-semibold">
-                                {t("students.modal.lastName", "Familiya")}
+                                {t("students.modal.lastName", "Last Name")}
                             </label>
                             <input
                                 {...register("last_name")}
                                 type="text"
-                                placeholder={t("students.modal.placeholder.lastName", "Masalan: Yarashev")}
+                                placeholder={t("students.modal.placeholder.lastName", "Doe")}
                                 className={`border rounded-lg w-full h-[40px] px-3 text-[14px] bg-transparent text-slate-900 dark:text-slate-100 outline-none transition-all ${errors.last_name
                                     ? "border-red-400 bg-red-50/10 dark:bg-red-950/10"
                                     : "border-slate-300 dark:border-slate-700 focus:border-indigo-500 dark:focus:border-indigo-400"
@@ -210,7 +204,7 @@ export default function AddStudentModal({ onClose }: AddStudentModalProps) {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="text-[14px] text-slate-700 dark:text-slate-300 mb-1 block font-semibold">
-                                {t("students.modal.phone", "Telefon raqami")}
+                                {t("students.modal.phone", "Phone Number")}
                             </label>
                             <div className="relative flex items-center">
                                 <div className="absolute left-3 flex items-center gap-1.5 select-none pointer-events-none">
@@ -235,13 +229,13 @@ export default function AddStudentModal({ onClose }: AddStudentModalProps) {
 
                         <div>
                             <label className="text-[14px] text-slate-700 dark:text-slate-300 mb-1 block font-semibold">
-                                {t("students.modal.password", "Parol")}
+                                {t("students.modal.password", "Password")}
                             </label>
                             <div className="relative flex items-center">
                                 <input
                                     {...register("password")}
                                     type={showPassword ? "text" : "password"}
-                                    placeholder={t("students.modal.placeholder.password", "Kamida 6 ta belgi")}
+                                    placeholder="••••••••"
                                     className={`border rounded-lg w-full h-[40px] pl-3 pr-[40px] text-[14px] bg-transparent text-slate-900 dark:text-slate-100 outline-none transition-all ${errors.password
                                         ? "border-red-400 bg-red-50/10 dark:bg-red-950/10"
                                         : "border-slate-300 dark:border-slate-700 focus:border-indigo-500 dark:focus:border-indigo-400"
@@ -265,12 +259,12 @@ export default function AddStudentModal({ onClose }: AddStudentModalProps) {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="text-[14px] text-slate-700 dark:text-slate-300 mb-1 block font-semibold">
-                                {t("students.modal.email", "Email manzili")}
+                                {t("students.modal.email", "Email Address")}
                             </label>
                             <input
                                 {...register("email")}
                                 type="email"
-                                placeholder={t("students.modal.placeholder.email", "example@gmail.com")}
+                                placeholder="student@example.com"
                                 className={`border rounded-lg w-full h-[40px] px-3 text-[14px] bg-transparent text-slate-900 dark:text-slate-100 outline-none transition-all ${errors.email
                                     ? "border-red-400 bg-red-50/10 dark:bg-red-950/10"
                                     : "border-slate-300 dark:border-slate-700 focus:border-indigo-500 dark:focus:border-indigo-400"
@@ -282,7 +276,7 @@ export default function AddStudentModal({ onClose }: AddStudentModalProps) {
                         </div>
                         <div>
                             <label className="text-[14px] text-slate-700 dark:text-slate-300 mb-1 block font-semibold">
-                                {t("students.modal.dob", "Tug'ilgan sana")}
+                                {t("students.modal.dob", "Date of Birth")}
                             </label>
                             <input
                                 {...register("date_of_birth")}
@@ -298,6 +292,28 @@ export default function AddStudentModal({ onClose }: AddStudentModalProps) {
                         </div>
                     </div>
 
+                    {/* ADDRESS */}
+                    <div>
+                        <label className="text-[14px] text-slate-700 dark:text-slate-300 mb-1 block font-semibold">
+                            {t("students.modal.address", "Address")}
+                        </label>
+                        <div className="relative flex items-center">
+                            <MapPin className="absolute left-3 w-4 h-4 text-slate-400 select-none pointer-events-none" />
+                            <input
+                                {...register("address")}
+                                type="text"
+                                placeholder={t("students.modal.placeholder.address", "Manzilni kiriting")}
+                                className={`border rounded-lg w-full h-[40px] pl-10 pr-3 text-[14px] bg-transparent text-slate-900 dark:text-slate-100 outline-none transition-all ${errors.address
+                                    ? "border-red-400 bg-red-50/10 dark:bg-red-950/10"
+                                    : "border-slate-300 dark:border-slate-700 focus:border-indigo-500 dark:focus:border-indigo-400"
+                                    }`}
+                            />
+                        </div>
+                        {errors.address && (
+                            <p className="text-red-400 text-[11px] mt-1">{errors.address.message}</p>
+                        )}
+                    </div>
+
                     {/* STATUS & LEARNING CENTER */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
@@ -308,20 +324,17 @@ export default function AddStudentModal({ onClose }: AddStudentModalProps) {
                                 {...register("status")}
                                 className="border border-slate-300 dark:border-slate-700 rounded-lg w-full h-[40px] px-3 text-[14px] outline-none bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:border-indigo-500 dark:focus:border-indigo-400"
                             >
-                                <option value="active">{t("students.status.active", "Faol")}</option>
-                                <option value="frozen">{t("students.status.frozen", "Muzlatilgan")}</option>
-                                <option value="inactive">{t("students.status.inactive", "Nofaol")}</option>
+                                <option value="active">{t("students.status.active", "Active")}</option>
+                                <option value="frozen">{t("students.status.frozen", "Frozen")}</option>
+                                <option value="inactive">{t("students.status.inactive", "Inactive")}</option>
                             </select>
                         </div>
                         <div className="relative">
                             <label className="text-[14px] text-slate-700 dark:text-slate-300 mb-1 block font-semibold">
-                                {t("students.modal.learningCenter", "O'quv markazi")}
+                                {t("students.modal.learningCenter", "Learning Center")}
                             </label>
                             <div
-                                className={`border rounded-lg w-full h-[40px] px-3 flex items-center justify-between cursor-pointer bg-white dark:bg-slate-900 transition-all ${errors.center
-                                    ? "border-red-400"
-                                    : "border-slate-300 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-400"
-                                    }`}
+                                className="border border-slate-300 dark:border-slate-700 rounded-lg w-full h-[40px] px-3 flex items-center justify-between cursor-pointer hover:border-indigo-500 dark:hover:border-indigo-400 bg-white dark:bg-slate-900 transition-all"
                                 onClick={() => setIsCenterOpen(!isCenterOpen)}
                             >
                                 <span className={selectedCenter ? "text-slate-900 dark:text-slate-100" : "text-slate-400 dark:text-slate-500"}>
@@ -374,13 +387,13 @@ export default function AddStudentModal({ onClose }: AddStudentModalProps) {
                     {/* NOTES */}
                     <div>
                         <label className="text-[14px] text-slate-700 dark:text-slate-300 mb-1 block font-semibold">
-                            {t("students.modal.notes", "Qo'shimcha eslatma (Ixtiyoriy)")}
+                            {t("students.modal.notes", "Notes (Optional)")}
                         </label>
                         <div className="relative flex items-start">
                             <Notebook className="absolute left-3 top-3 w-4 h-4 text-slate-400 select-none pointer-events-none" />
                             <textarea
                                 {...register("notes")}
-                                placeholder={t("students.modal.placeholder.notes", "Talaba haqida qo'shimcha ma'lumotlar...")}
+                                placeholder={t("students.modal.placeholder.notes", "Additional notes about the student...")}
                                 rows={2}
                                 className="border border-slate-300 dark:border-slate-700 rounded-lg w-full pl-10 pr-3 py-2 text-[14px] bg-transparent text-slate-900 dark:text-slate-100 outline-none resize-none min-h-[60px] focus:border-indigo-500 dark:focus:border-indigo-400"
                             />
@@ -395,10 +408,10 @@ export default function AddStudentModal({ onClose }: AddStudentModalProps) {
                     >
                         {isPending ? (
                             <span className="flex items-center gap-2">
-                                <Loader2 className="w-4 h-4 animate-spin" /> {t("students.modal.addingStatus", "Talaba qo'shilmoqda...")}
+                                <Loader2 className="w-4 h-4 animate-spin" /> {t("students.modal.addingStatus", "Adding Student...")}
                             </span>
                         ) : (
-                            t("students.modal.addBtn", "Talabani qo'shish")
+                            t("students.modal.addBtn", "Add Student")
                         )}
                     </button>
                 </form>

@@ -40,7 +40,6 @@ const schema = yup.object({
 
 type FormData = yup.InferType<typeof schema>;
 
-// Yandex Maps loader — bir marta yuklansin
 let ymapsLoaded = false;
 let ymapsPromise: Promise<void> | null = null;
 
@@ -70,7 +69,6 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
     const queryClient = useQueryClient();
     const [isMounted, setIsMounted] = useState(false);
     const [phoneDisplay, setPhoneDisplay] = useState("");
-    const [logoMode, setLogoMode] = useState<"upload" | "link">("upload");
     const [logoPreview, setLogoPreview] = useState<string>("");
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -426,29 +424,19 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
                     <div>
                         <div className="flex items-center justify-between mb-1.5">
                             <label className="text-[14px] text-slate-600 dark:text-slate-300 font-semibold">{t("centers.logo")}</label>
-                            <div className="flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-400">
-                                <button
-                                    type="button"
-                                    onClick={() => setLogoMode("upload")}
-                                    className={`flex items-center gap-1 px-2.5 py-1 rounded-md transition-all cursor-pointer ${logoMode === "upload" ? "bg-white dark:bg-slate-700 text-indigo-600 shadow-xs" : "hover:text-slate-900 dark:hover:text-slate-200"}`}
-                                >
-                                    <Upload className="w-3 h-3" /> {t("directors.upload")}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setLogoMode("link")}
-                                    className={`flex items-center gap-1 px-2.5 py-1 rounded-md transition-all cursor-pointer ${logoMode === "link" ? "bg-white dark:bg-slate-700 text-indigo-600 shadow-xs" : "hover:text-slate-900 dark:hover:text-slate-200"}`}
-                                >
-                                    <Link className="w-3 h-3" /> {t("directors.url_link")}
-                                </button>
-                            </div>
                         </div>
 
                         <div className="flex gap-4 items-center border border-slate-200 dark:border-slate-700 rounded-xl p-3 bg-slate-50/50 dark:bg-slate-800/50 transition-colors">
                             <div className="relative w-16 h-16 min-w-16 rounded-lg border border-dashed border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 flex items-center justify-center overflow-hidden group">
                                 {logoPreview ? (
                                     <>
-                                        <Image src={logoPreview} alt="Logo preview" className="w-full h-full object-cover" />
+                                        <Image
+                                            src={logoPreview}
+                                            alt="Logo preview"
+                                            width={200}
+                                            height={200}
+                                            className="w-full h-full object-cover"
+                                        />
                                         <button
                                             type="button"
                                             onClick={clearLogo}
@@ -463,32 +451,23 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
                             </div>
 
                             <div className="w-full">
-                                {logoMode === "upload" ? (
-                                    <>
-                                        <input
-                                            ref={fileInputRef}
-                                            id="logo-file-input"
-                                            type="file"
-                                            accept="image/png,image/jpeg,image/jpg,image/webp"
-                                            onChange={handleFileChange}
-                                            className="hidden"
-                                        />
-                                        <label
-                                            htmlFor="logo-file-input"
-                                            className="inline-flex items-center gap-2 px-4 h-[38px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all cursor-pointer"
-                                        >
-                                            <Upload className="w-3.5 h-3.5" /> {t("centers.choose_image")}
-                                        </label>
-                                        <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">{t("centers.image_hint")}</p>
-                                    </>
-                                ) : (
+                                <>
                                     <input
-                                        type="url"
-                                        placeholder="https://example.com/logo.png"
-                                        onChange={(e) => setLogoPreview(e.target.value)}
-                                        className="border border-slate-200 dark:border-slate-700 rounded-lg w-full h-[38px] px-3 text-xs outline-none bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-indigo-500 transition-colors"
+                                        ref={fileInputRef}
+                                        id="logo-file-input"
+                                        type="file"
+                                        accept="image/png,image/jpeg,image/jpg,image/webp"
+                                        onChange={handleFileChange}
+                                        className="hidden"
                                     />
-                                )}
+                                    <label
+                                        htmlFor="logo-file-input"
+                                        className="inline-flex items-center gap-2 px-4 h-[38px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all cursor-pointer"
+                                    >
+                                        <Upload className="w-3.5 h-3.5" /> {t("centers.choose_image")}
+                                    </label>
+                                    <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">{t("centers.image_hint")}</p>
+                                </>
                             </div>
                         </div>
                     </div>
