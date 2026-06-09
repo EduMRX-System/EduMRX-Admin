@@ -81,7 +81,7 @@ export default function EditTeacherModal({
   const { data: learningCenters, isLoading: isCentersLoading } = useQuery({
     queryKey: ["learning-centers-list"],
     queryFn: async () => {
-      const res = await API.get("/api/v1/super-admin/centers/");
+      const res = await API.get("super-admin/centers/");
       return res?.data?.results || res?.data || [];
     },
   });
@@ -156,7 +156,7 @@ export default function EditTeacherModal({
   const { mutate: updateTeacher, isPending } = useMutation({
     mutationFn: async (body: FormData) => {
       const res = await API.put(
-        `/api/v1/super-admin/teachers/${teacher.id}/`,
+        `super-admin/teachers/${teacher.id}/`,
         body,
       );
       return res.data;

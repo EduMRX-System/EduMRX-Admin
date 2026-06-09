@@ -49,14 +49,14 @@ export default function TeachersView() {
   } = useQuery<Teacher[]>({
     queryKey: ["teachers"],
     queryFn: async () => {
-      const res = await API.get("/api/v1/super-admin/teachers/");
+      const res = await API.get("super-admin/teachers/");
       return res?.data?.results || res?.data || [];
     },
   });
 
   const { mutate: deleteTeacher, isPending: isDeletePending } = useMutation({
     mutationFn: async (id: string) => {
-      await API.delete(`/api/v1/super-admin/teachers/${id}/`);
+      await API.delete(`super-admin/teachers/${id}/`);
     },
     onSuccess: () => {
       toast.success("Teacher successfully deleted");

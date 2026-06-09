@@ -25,7 +25,7 @@ export default function PaginationControl({
     const { t } = useTranslation();
 
     return (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4">
 
             {/* Chap tomon: info + page size */}
             <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">

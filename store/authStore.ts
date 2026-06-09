@@ -69,7 +69,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const tokens: Tokens = JSON.parse(storedTokens);
 
       const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_DataBaseURL}/api/v1/me/`,
+        `${process.env.NEXT_PUBLIC_DataBaseURL}/me/`,
         {
           headers: {
             Authorization: `Bearer ${tokens.access_token}`,

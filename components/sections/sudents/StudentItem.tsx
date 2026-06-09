@@ -13,7 +13,6 @@ export interface IStudent {
     phone: string;
     email: string;
     center_name?: string;
-    address?: string;
     date_of_birth?: string;
     status?: "active" | "inactive" | "pending";
     enrolled_at?: string;
@@ -92,13 +91,6 @@ export default function StudentItem({
                 </span>
             </td>
 
-            {/* MANZIL */}
-            <td className="py-4 px-5">
-                <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 max-w-[180px]">
-                    <MapPin className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0" />
-                    <span className="truncate">{student.address || "—"}</span>
-                </div>
-            </td>
 
             {/* TUG'ILGAN SANA */}
             <td className="py-4 px-5">

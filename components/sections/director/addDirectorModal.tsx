@@ -6,33 +6,57 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { API } from "@/services/api";
-import { ShieldAlert, X, Loader2, Camera, Upload, Link as LinkIcon } from "lucide-react";
+import { X, Loader2, Upload, ImageIcon } from "lucide-react";
 import { toast } from "react-toastify";
 import { PhoneInput } from "@/components/ui/PhoneInput";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import Image from "next/image";
-import { t } from "i18next";
+import { useTranslation } from "react-i18next"; // To'g'ri hook import qilindi
 
-const schema = yup.object({
-    first_name: yup.string().required("Ism kiritilishi shart"),
-    last_name: yup.string().required("Familiya kiritilishi shart"),
-    phone: yup.string().required("Telefon raqami majburiy").test("len", "Raqamni to'liq kiriting", val => val?.replace(/\D/g, "").length === 12),
-    email: yup.string().email("Xato email formati").required("Email kiritilishi shart"),
-    password: yup.string().required("Parol kiritilishi shart").min(6, "Parol kamida 6 ta belgi bo'lishi kerak")
-}).required();
+// Dinamik tilga moslashuvchan Yup sxemasi
+const getDirectorSchema = (t: any) =>
+    yup.object({
+        first_name: yup
+            .string()
+            .required(t("director.validation.firstNameRequired")),
 
-type FormData = yup.InferType<typeof schema>;
+        last_name: yup
+            .string()
+            .required(t("director.validation.lastNameRequired")),
+
+        phone: yup
+            .string()
+            .required(t("director.validation.phoneRequired"))
+            .test(
+                "len",
+                t("director.validation.phoneInvalid"),
+                (val) => val?.replace(/\D/g, "").length === 12
+            ),
+
+        email: yup
+            .string()
+            .email(t("director.validation.emailInvalid"))
+            .required(t("director.validation.emailRequired")),
+
+        password: yup
+            .string()
+            .required(t("director.validation.passwordRequired"))
+            .min(6, t("director.validation.passwordMin"))
+    }).required();
+
+type FormData = yup.InferType<ReturnType<typeof getDirectorSchema>>;
 
 export default function AddDirectorModal({ onClose }: { onClose?: () => void }) {
+    const { t } = useTranslation();
     const queryClient = useQueryClient();
-    const [activeTab, setActiveTab] = useState<"upload" | "url">("upload");
+
     const [avatar, setAvatar] = useState<File | null>(null);
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-    const [avatarUrl, setAvatarUrl] = useState("");
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    // Har safar til o'zgarganda yangi 't' bilan resolver ishlaydi
     const { register, handleSubmit, control, formState: { errors } } = useForm<FormData>({
-        resolver: yupResolver(schema)
+        resolver: yupResolver(getDirectorSchema(t))
     });
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -52,16 +76,14 @@ export default function AddDirectorModal({ onClose }: { onClose?: () => void }) 
             formData.append("email", data.email);
             formData.append("password", data.password);
 
-            if (activeTab === "upload" && avatar) {
+            if (avatar) {
                 formData.append("avatar", avatar);
-            } else if (activeTab === "url" && avatarUrl) {
-                formData.append("avatar_url", avatarUrl);
             }
 
-            return API.post("/api/v1/super-admin/directors/", formData);
+            return API.post("super-admin/directors/", formData);
         },
         onSuccess: () => {
-            toast.success("Yangi direktor muvaffaqiyatli qo'shildi!");
+            toast.success(t("directors.success_message") || "Yangi direktor muvaffaqiyatli qo'shildi!");
             queryClient.invalidateQueries({ queryKey: ["directors"] });
             onClose?.();
         },
@@ -71,24 +93,24 @@ export default function AddDirectorModal({ onClose }: { onClose?: () => void }) 
             if (responseData && typeof responseData === 'object') {
                 Object.keys(responseData).forEach((key) => {
                     const fieldErrors = responseData[key];
-
                     if (Array.isArray(fieldErrors)) {
-                        fieldErrors.forEach((msg) => {
-                            toast.error(`${msg}`);
-                        });
+                        fieldErrors.forEach((msg) => toast.error(`${msg}`));
                     } else if (typeof fieldErrors === 'string') {
                         toast.error(fieldErrors);
                     }
                 });
             } else {
-                toast.error("Tizimda xatolik yuz berdi. Qaytadan urinib ko'ring.");
+                toast.error(t("common.error") || "Tizimda xatolik yuz berdi. Qaytadan urinib ko'ring.");
             }
         }
     });
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop */}
             <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
+
+            {/* Modal Content */}
             <div className="bg-white dark:bg-slate-900 p-6 rounded-xl max-w-xl w-full relative z-10 shadow-2xl border border-slate-100 dark:border-slate-800 transition-colors">
                 <button type="button" onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
                     <X className="w-5 h-5" />
@@ -99,91 +121,119 @@ export default function AddDirectorModal({ onClose }: { onClose?: () => void }) 
                 </h3>
 
                 <form onSubmit={handleSubmit((data) => createDirector(data))} className="space-y-4">
-                    {/* Avatar Upload */}
-                    <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 transition-colors">
-                        <div className="flex gap-4 mb-4">
-                            <button
-                                type="button"
-                                onClick={() => setActiveTab("upload")}
-                                className={`flex items-center gap-2 text-sm font-medium transition-colors ${activeTab === "upload" ? "text-indigo-600" : "text-slate-500 dark:text-slate-400"}`}
-                            >
-                                <Upload className="w-4 h-4" /> {t("directors.upload")}
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setActiveTab("url")}
-                                className={`flex items-center gap-2 text-sm font-medium transition-colors ${activeTab === "url" ? "text-indigo-600" : "text-slate-500 dark:text-slate-400"}`}
-                            >
-                                <LinkIcon className="w-4 h-4" /> {t("directors.url_link")}
-                            </button>
+
+                    {/* Image Upload UI Section */}
+                    <div className="flex gap-4 items-center border border-slate-200 dark:border-slate-700 rounded-xl p-3 bg-slate-50/50 dark:bg-slate-800/50 transition-colors">
+                        <div
+                            className="relative w-16 h-16 min-w-16 rounded-lg border border-dashed border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 flex items-center justify-center overflow-hidden group cursor-pointer"
+                            onClick={() => fileInputRef.current?.click()}
+                        >
+                            {avatarPreview ? (
+                                <Image
+                                    src={avatarPreview}
+                                    alt="Avatar preview"
+                                    fill
+                                    className="object-cover transition-transform duration-200 group-hover:scale-105"
+                                />
+                            ) : (
+                                <ImageIcon className="w-6 h-6 text-slate-300 dark:text-slate-600 transition-colors group-hover:text-slate-400" aria-hidden="true" />
+                            )}
                         </div>
 
-                        {activeTab === "upload" ? (
-                            <div className="flex items-center gap-4">
-                                <div
-                                    className="w-16 h-16 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center cursor-pointer overflow-hidden relative"
-                                    onClick={() => fileInputRef.current?.click()}
-                                >
-                                    {avatarPreview ? <Image src={avatarPreview} alt="prev" fill className="object-cover" /> : <Camera className="w-6 h-6 text-slate-400" />}
-                                </div>
-                                <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
-                                <button
-                                    type="button"
-                                    onClick={() => fileInputRef.current?.click()}
-                                    className="text-sm text-indigo-600 font-medium border border-indigo-200 dark:border-indigo-800 px-3 py-1.5 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950 transition-colors"
-                                >
-                                    {t("directors.choose_file")}
-                                </button>
-                            </div>
-                        ) : (
+                        <div className="w-full">
                             <input
-                                value={avatarUrl}
-                                onChange={(e) => setAvatarUrl(e.target.value)}
-                                placeholder="https://example.com/avatar.jpg"
-                                className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-colors"
+                                type="file"
+                                ref={fileInputRef}
+                                onChange={handleFileChange}
+                                className="hidden"
+                                accept="image/png, image/jpeg, image/jpg, image/webp"
                             />
-                        )}
+
+                            <button
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                className="inline-flex items-center gap-2 px-4 h-[38px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all cursor-pointer shadow-sm active:scale-[0.98]"
+                            >
+                                <Upload className="w-3.5 h-3.5" aria-hidden="true" />
+                                {t("directors.choose_file")}
+                            </button>
+
+                            <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
+                                {t("directors.file_restrictions") || "PNG, JPG, WEBP formatlari, 2MB gacha"}
+                            </p>
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t("directors.first_name")}</label>
+                            <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1 block">
+                                {t("directors.first_name")}
+                            </label>
                             <input
                                 {...register("first_name")}
-                                placeholder="Xusan"
-                                className="mt-1 w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-colors"
+                                placeholder={t("directors.placeholder_first_name") || "Xusan"}
+                                className={`border rounded-lg w-full h-[40px] px-3 text-[14px] outline-none focus:border-indigo-500 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-colors
+                                    ${errors?.first_name?.message
+                                        ? "border-red-300 dark:border-red-800 bg-red-50/10 focus:border-red-500"
+                                        : "border-slate-200 dark:border-slate-700"
+                                    }`}
                             />
-                            {errors.first_name && <p className="text-red-500 text-xs mt-1">{errors.first_name.message}</p>}
+                            {errors.first_name && <p className="text-red-400 dark:text-red-500 text-[11px] mt-1">{errors.first_name.message}</p>}
                         </div>
+
                         <div>
-                            <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t("directors.last_name")}</label>
+                            <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1 block">
+                                {t("directors.last_name")}
+                            </label>
                             <input
                                 {...register("last_name")}
-                                placeholder="Yarashev"
-                                className="mt-1 w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-colors"
+                                placeholder={t("directors.placeholder_last_name") || "Yarashev"}
+                                className={`border rounded-lg w-full h-[40px] px-3 text-[14px] outline-none focus:border-indigo-500 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-colors
+                                    ${errors?.last_name?.message
+                                        ? "border-red-300 dark:border-red-800 bg-red-50/10 focus:border-red-500"
+                                        : "border-slate-200 dark:border-slate-700"
+                                    }`}
                             />
+                            {errors?.last_name && <p className="text-red-400 dark:text-red-500 text-[11px] mt-1">{errors.last_name.message}</p>}
                         </div>
                     </div>
 
-                    <Controller name="phone" control={control} render={({ field }) => (
-                        <PhoneInput value={field.value || ""} onChange={field.onChange} error={errors.phone?.message} />
-                    )} />
-
                     <div>
-                        <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t("directors.email")}</label>
-                        <input
-                            {...register("email")}
-                            placeholder="xusan@example.com"
-                            className="mt-1 w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-colors"
+                        <Controller
+                            name="phone"
+                            control={control}
+                            render={({ field }) => (
+                                <PhoneInput value={field.value || ""} onChange={field.onChange} error={errors.phone?.message} />
+                            )}
                         />
                     </div>
 
-                    <PasswordInput register={register("password")} error={errors.password?.message} />
+                    {/* Email Input */}
+                    <div>
+                        <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1 block">
+                            {t("directors.email")}
+                        </label>
+                        <input
+                            {...register("email")}
+                            placeholder="example@edumrx.uz"
+                            className={`border rounded-lg w-full h-[40px] px-3 text-[14px] outline-none focus:border-indigo-500 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-colors
+                                ${errors?.email?.message
+                                    ? "border-red-300 dark:border-red-800 bg-red-50/10 focus:border-red-500"
+                                    : "border-slate-200 dark:border-slate-700"
+                                }`}
+                        />
+                        {errors?.email && <p className="text-red-400 dark:text-red-500 text-[11px] mt-1">{errors?.email?.message}</p>}
+                    </div>
+
+                    {/* Password Input */}
+                    <div>
+                        <PasswordInput register={register("password")} error={errors.password?.message} />
+                    </div>
 
                     <button
                         type="submit"
                         disabled={isPending}
-                        className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold flex items-center justify-center transition-colors disabled:opacity-60"
+                        className="w-full h-10 mt-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold flex items-center justify-center transition-colors disabled:opacity-60 shadow-md active:scale-[0.99]"
                     >
                         {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : t("directors.create_btn")}
                     </button>

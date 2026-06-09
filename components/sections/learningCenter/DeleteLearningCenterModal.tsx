@@ -17,7 +17,7 @@ export default function DeleteLearningCenterModal({ centerId, centerName, onClos
 
   const { mutate: deleteCenter, isPending } = useMutation({
     mutationFn: async () => {
-      await API.delete(`/api/v1/super-admin/centers/${centerId}/`);
+      await API.delete(`super-admin/centers/${centerId}/`);
     },
     onSuccess: () => {
       toast.success("O'quv markazi tizimdan butkul o'chirildi");

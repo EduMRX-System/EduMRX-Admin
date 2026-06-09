@@ -74,7 +74,7 @@ export default function AddTeacherModal({ onClose }: { onClose?: () => void }) {
     const { data: learningCenters, isLoading: isCentersLoading } = useQuery({
         queryKey: ["learning-centers-list"],
         queryFn: async () => {
-            const res = await API.get("/api/v1/super-admin/centers/");
+            const res = await API.get("super-admin/centers/");
             return res?.data?.results || res?.data || [];
         }
     });
@@ -87,7 +87,7 @@ export default function AddTeacherModal({ onClose }: { onClose?: () => void }) {
     // Teacher qo'shish mutatsiyasi
     const { mutate: addTeacher, isPending } = useMutation({
         mutationFn: async (body: FormData) => {
-            const res = await API.post("/api/v1/super-admin/teachers/", body);
+            const res = await API.post("super-admin/teachers/", body);
             return res.data;
         },
         onSuccess: (data) => {

@@ -6,7 +6,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { API } from "@/services/api";
-import { Building2, Upload, Link, Image as ImageIcon, X, Search, ChevronDown, MapPin, Loader2 } from "lucide-react";
+import { Building2, Upload, Link, Image as ImageIcon, X, Search, ChevronDown, MapPin, Loader2, Phone } from "lucide-react";
 import { toast } from "react-toastify";
 import { t } from "i18next";
 import Image from "next/image";
@@ -98,6 +98,7 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
         setError,
         setValue,
         reset,
+        watch,
         formState: { errors },
     } = useForm<FormData>({
         resolver: yupResolver(schema),
@@ -249,7 +250,7 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
     const { data: directors, isLoading: isDirectorsLoading } = useQuery({
         queryKey: ["directors-list"],
         queryFn: async () => {
-            const res = await API.get("/api/v1/super-admin/directors/");
+            const res = await API.get("super-admin/directors/");
             return res?.data?.results || res?.data || [];
         },
     });
@@ -279,7 +280,7 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
                 formData.append("logo", selectedFile);
             }
 
-            const res = await API.post("/api/v1/super-admin/centers/", formData, {
+            const res = await API.post("super-admin/centers/", formData, {
                 headers: { "Content-Type": "multipart/form-data" },
             });
             return res.data;
@@ -474,12 +475,16 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
 
                     {/* Director dropdown */}
                     <div ref={dropdownRef} className="relative">
-                        <label className="text-[14px] text-slate-600 dark:text-slate-300 mb-1 block font-semibold">{t("centers.director")}</label>
+                        <label className="text-[14px] text-slate-600 dark:text-slate-300 mb-1 block font-semibold">
+                            {t("centers.director")}
+                        </label>
+
+                        {/* Dropdown Tanlagich (ID o'rniga Ism-Familiya chiqadigan joy) */}
                         <div
                             onClick={() => !isDirectorsLoading && setIsOpen(!isOpen)}
                             className={`border rounded-lg w-full h-[40px] px-3 text-[14px] flex items-center justify-between cursor-pointer bg-white dark:bg-slate-800 transition-all
-                            ${errors.director ? "border-red-300 dark:border-red-800" : "border-slate-200 dark:border-slate-700"}
-                            ${isDirectorsLoading ? "opacity-60 cursor-not-allowed" : ""}`}
+        ${errors.director ? "border-red-300 dark:border-red-800" : "border-slate-200 dark:border-slate-700"}
+        ${isDirectorsLoading ? "opacity-60 cursor-not-allowed" : ""}`}
                         >
                             <span className={selectedDirectorName ? "text-slate-900 dark:text-slate-100" : "text-slate-400 dark:text-slate-500"}>
                                 {isDirectorsLoading ? t("centers.loading_directors") : selectedDirectorName || t("centers.select_director")}
@@ -487,9 +492,12 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
                             <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
                         </div>
 
+                        {/* Dropdown Oyna */}
                         {isOpen && (
-                            <div className="absolute left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 max-h-[220px] overflow-hidden flex flex-col">
-                                <div className="p-2 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2 bg-slate-50 dark:bg-slate-800/80 sticky top-0">
+                            <div className="absolute left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 overflow-hidden flex flex-col animate-in fade-in-50 duration-150">
+
+                                {/* Qidiruv Inputi */}
+                                <div className="p-2 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2 bg-slate-50 dark:bg-slate-800/80 sticky top-0 z-10">
                                     <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                                     <input
                                         type="text"
@@ -503,28 +511,38 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
                                         <X onClick={() => setSearchTerm("")} className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer" />
                                     )}
                                 </div>
-                                <div className="overflow-y-auto flex-1 max-h-[160px]">
+
+                                {/* Qat'iy balandlik berilgan (Scroll) Ro'yxat */}
+                                <div className="overflow-y-auto max-h-[200px] flex-1 divide-y divide-slate-50 dark:divide-slate-700/50">
                                     {filteredDirectors.length > 0 ? (
                                         filteredDirectors.map((dir: any) => {
-                                            const nameText = dir.full_name || dir.name || dir.id;
+                                            const fullName = dir.full_name || `${dir.first_name || ""} ${dir.last_name || ""}`.trim() || dir.id;
+                                            const formattedPhone = dir.phone ? `+${dir.phone.replace(/\D/g, "")}` : "";
+
                                             return (
                                                 <div
                                                     key={dir.id}
                                                     onClick={() => {
-                                                        setSelectedDirectorName(nameText);
-                                                        setValue("director", dir.id, { shouldValidate: true });
+                                                        setSelectedDirectorName(fullName); // Inputda ism ko'rinadi
+                                                        setValue("director", dir.id, { shouldValidate: true }); // Formaga baribir ID saqlanadi
                                                         setIsOpen(false);
                                                         setSearchTerm("");
                                                     }}
-                                                    className={`px-3 py-2 text-[13px] text-slate-900 dark:text-slate-100 hover:bg-indigo-50 dark:hover:bg-indigo-950 hover:text-indigo-600 cursor-pointer transition-colors
-                                                    ${selectedDirectorName === nameText ? "bg-indigo-50/60 dark:bg-indigo-950/40 font-medium text-indigo-600" : ""}`}
+                                                    className={`px-3 py-2 text-[13px] hover:bg-indigo-50 dark:hover:bg-indigo-950/60 cursor-pointer transition-colors flex flex-col gap-0.5
+                                ${watch("director") === dir.id ? "bg-indigo-50/60 dark:bg-indigo-950/40 font-medium text-indigo-600" : "text-slate-900 dark:text-slate-100"}`}
                                                 >
-                                                    {nameText}
+                                                    <span className="font-medium">{fullName}</span>
+                                                    {formattedPhone && (
+                                                        <span className="text-[11px] text-slate-400 dark:text-slate-500 flex items-center gap-1">
+                                                            <Phone className="w-2.5 h-2.5" />
+                                                            {formattedPhone}
+                                                        </span>
+                                                    )}
                                                 </div>
                                             );
                                         })
                                     ) : (
-                                        <div className="px-3 py-3 text-xs text-center text-slate-400 dark:text-slate-500">
+                                        <div className="px-3 py-4 text-xs text-center text-slate-400 dark:text-slate-500">
                                             {t("common.no_results")}
                                         </div>
                                     )}

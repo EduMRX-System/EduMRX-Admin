@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: any = {
-  reactCompiler: true, // experimental ichidan tashqariga chiqarildi
+  reactCompiler: true,
 
   eslint: {
     ignoreDuringBuilds: true,

@@ -26,16 +26,16 @@ export interface IGroupData {
 
 export interface IStudent {
   id: string;
-  first_name: string;
-  last_name: string;
+  student_id: string;
   full_name: string;
+  avatar: string;
   phone: string;
   email: string;
+  center_name: string;
   date_of_birth: string;
-  address: string;
-  status: "active" | "inactive" | "pending";
   notes: string;
-  center: string;
+  status: "active" | "inactive";
+  enrolled_at: string;
 }
 
 export interface ILearningCenter {
@@ -55,7 +55,7 @@ export interface ILearningCenter {
 export interface IDirector {
   id: string;
   first_name: string;
-  last_name: string; 
+  last_name: string;
   phone: string;
   email: string;
   avatar?: string | null;

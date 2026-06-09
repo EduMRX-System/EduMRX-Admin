@@ -17,7 +17,7 @@ export default function DeleteDirectorModal({ id, name, onClose }: DeleteProps) 
 
     const { mutate: deleteDirector, isPending } = useMutation({
         mutationFn: async () => {
-            await API.delete(`/api/v1/super-admin/directors/${id}/`);
+            await API.delete(`super-admin/directors/${id}/`);
         },
         onSuccess: () => {
             toast.success("Direktor tizimdan muvaffaqiyatli o'chirildi.");

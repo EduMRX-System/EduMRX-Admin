@@ -38,7 +38,6 @@ const schema = yup.object({
         .min(6, "Parol kamida 6 ta belgidan iborat bo'lishi kerak"),
     center: yup.string().uuid("O'quv markazi UUID formatida bo'lishi shart").required("Markazni tanlash shart"),
     date_of_birth: yup.string().required("Tug'ilgan sana kiritilishi shart"),
-    address: yup.string().required("Manzil kiritilishi shart"),
     notes: yup.string().optional(),
     status: yup.string().oneOf(["active", "frozen", "inactive"]).required("Status shart"),
 }).required();
@@ -74,14 +73,13 @@ export default function AddStudentModal({ onClose }: AddStudentModalProps) {
         defaultValues: {
             status: "active",
             date_of_birth: new Date().toISOString().split('T')[0],
-            address: ""
         }
     });
 
     const { data: centersData, isLoading: isCentersLoading } = useQuery({
         queryKey: ["centers-list"],
         queryFn: async () => {
-            const res = await API.get("/api/v1/super-admin/centers/");
+            const res = await API.get("super-admin/centers/");
             return res.data.results;
         }
     });
@@ -92,7 +90,7 @@ export default function AddStudentModal({ onClose }: AddStudentModalProps) {
 
     const { mutate: addStudent, isPending } = useMutation({
         mutationFn: async (body: FormData) => {
-            const res = await API.post("/api/v1/super-admin/students/", body, {
+            const res = await API.post("super-admin/students/", body, {
                 headers: {
                     "Content-Type": "application/json",
                 },
@@ -139,27 +137,27 @@ export default function AddStudentModal({ onClose }: AddStudentModalProps) {
 
             {/* MODAL BODY */}
             <div
-                className={`bg-white dark:bg-slate-900 p-6 rounded-xl max-w-xl w-full max-h-[90vh] overflow-y-auto relative z-10 shadow-2xl border border-slate-100 dark:border-slate-800 transform transition-all duration-500 ease-out ${isMounted ? "opacity-100 translate-y-0 scale-100" : "opacity-0 -translate-y-12 scale-95"
+                className={`bg-white  dark:bg-slate-900 p-6 rounded-xl max-w-xl w-full max-h-[90vh] overflow-y-auto relative z-10 shadow-2xl border border-slate-100 dark:border-slate-800 transform transition-all duration-500 ease-out ${isMounted ? "opacity-100 translate-y-0 scale-100" : "opacity-0 -translate-y-12 scale-95"
                     }`}
             >
-                {/* CLOSE BUTTON */}
-                <button
-                    type="button"
-                    onClick={onClose}
-                    className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer border-none bg-transparent transition-colors"
-                >
-                    <X className="w-5 h-5" />
-                </button>
+                <div className="flex items-center relative justify-between mb-4 py-4 border-b flex-shrink-0">
+                    <div>
+                        <div className="mb-[10px] border-slate-300 dark:border-slate-700 border shadow-sm w-[44px] h-[44px] rounded-lg flex justify-center items-center text-indigo-600 dark:text-indigo-400 bg-indigo-50/10 dark:bg-indigo-500/10">
+                            <User className="w-6 h-6" />
+                        </div>
+                        <h3 className="text-slate-800 dark:text-slate-100 text-[18px] font-semibold">
+                            {t("students.modal.addTitle", "Add New Student")}
+                        </h3>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer border-none bg-transparent transition-colors"
+                    >
+                        <X className="w-5 h-5" />
+                    </button>
 
-                {/* ICON CONTAINER */}
-                <div className="mb-[10px] border-slate-300 dark:border-slate-700 border shadow-sm w-[44px] h-[44px] rounded-lg flex justify-center items-center text-indigo-600 dark:text-indigo-400 bg-indigo-50/10 dark:bg-indigo-500/10">
-                    <User className="w-6 h-6" />
                 </div>
-
-                {/* TITLE */}
-                <h3 className="text-slate-800 dark:text-slate-100 text-[18px] font-semibold mb-4">
-                    {t("students.modal.addTitle", "Add New Student")}
-                </h3>
 
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                     {/* FIRST & LAST NAME */}
@@ -292,27 +290,6 @@ export default function AddStudentModal({ onClose }: AddStudentModalProps) {
                         </div>
                     </div>
 
-                    {/* ADDRESS */}
-                    <div>
-                        <label className="text-[14px] text-slate-700 dark:text-slate-300 mb-1 block font-semibold">
-                            {t("students.modal.address", "Address")}
-                        </label>
-                        <div className="relative flex items-center">
-                            <MapPin className="absolute left-3 w-4 h-4 text-slate-400 select-none pointer-events-none" />
-                            <input
-                                {...register("address")}
-                                type="text"
-                                placeholder={t("students.modal.placeholder.address", "Manzilni kiriting")}
-                                className={`border rounded-lg w-full h-[40px] pl-10 pr-3 text-[14px] bg-transparent text-slate-900 dark:text-slate-100 outline-none transition-all ${errors.address
-                                    ? "border-red-400 bg-red-50/10 dark:bg-red-950/10"
-                                    : "border-slate-300 dark:border-slate-700 focus:border-indigo-500 dark:focus:border-indigo-400"
-                                    }`}
-                            />
-                        </div>
-                        {errors.address && (
-                            <p className="text-red-400 text-[11px] mt-1">{errors.address.message}</p>
-                        )}
-                    </div>
 
                     {/* STATUS & LEARNING CENTER */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

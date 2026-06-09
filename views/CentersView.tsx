@@ -30,7 +30,7 @@ export default function LearningCentersList() {
     const { data, isLoading, isError, error } = useQuery({
         queryKey: ["learning-centers", page, pageSize, debouncedSearch],
         queryFn: async () => {
-            const res = await API.get(`/api/v1/super-admin/centers/?page=${page}&page_size=${pageSize}&search=${debouncedSearch}`);
+            const res = await API.get(`super-admin/centers/?page=${page}&page_size=${pageSize}&search=${debouncedSearch}`);
             return res?.data;
         },
         enabled: debouncedSearch.trim().length > 0 || debouncedSearch === ""

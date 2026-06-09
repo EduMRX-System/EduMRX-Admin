@@ -14,6 +14,7 @@
     "financial": "Financial",
     "settings": "Settings"
   },
+
   "students": {
     "title": "Students",
     "subtitle": "Manage and track student enrollment, performance, and status.",
@@ -40,6 +41,7 @@
     },
     "modal": {
       "addTitle": "Add New Student",
+      "editTitle": "Edit student",
       "firstName": "First Name",
       "lastName": "Last Name",
       "phone": "Phone Number",
@@ -69,6 +71,10 @@
     }
   },
   "directors": {
+    "edit_title": "Edit Director Details",
+    "save_btn": "Save Changes",
+    "password_hint": "* Enter a password only if you want to change it, otherwise leave blank.",
+    "update_success_message": "Director successfully updated!",
     "title": "Directors Management",
     "desc": "Manage all learning center directors in the system.",
     "add": "Add Director",
@@ -80,20 +86,34 @@
     "col_actions": "Actions",
     "role": "System Director",
     "add_title": "Add New Director",
-    "edit_title": "Edit Director Details",
     "delete_title": "Delete Director",
     "delete_confirm": "Are you sure you want to delete",
     "delete_confirm_end": "?",
     "delete_btn": "Delete",
     "create_btn": "Create Director",
-    "save_btn": "Save Updates",
     "upload": "Upload",
     "url_link": "URL Link",
     "choose_file": "Choose File",
     "first_name": "First Name",
     "last_name": "Last Name",
     "email": "Email Address",
-    "loading": "Loading directors Lisst..."
+    "loading": "Loading directors Lisst...",
+    "file_restrictions": "PNG, JPG, WEBP formats, up to 2MB",
+    "placeholder_first_name": "Husan",
+    "placeholder_last_name": "Yarashev",
+    "phone": "Phone Number",
+    "password": "Password",
+    "success_message": "New director successfully added!",
+    "validation": {
+      "firstNameRequired": "First name is required",
+      "lastNameRequired": "Last name is required",
+      "phoneRequired": "Phone number is required",
+      "phoneInvalid": "Enter the complete phone number",
+      "emailInvalid": "Invalid email format",
+      "emailRequired": "Email is required",
+      "passwordRequired": "Password is required",
+      "passwordMin": "Password must be at least 6 characters"
+    }
   },
   "finance": {
     "title": "Finance",
@@ -118,19 +138,6 @@
     "chart_title": "Monthly Revenue Trend",
     "chart_desc": "Top 5 learning centers (mln UZS)",
     "total_label": "Total:"
-  },
-  "common": {
-    "all": "All",
-    "search": "Search...",
-    "error": "An error occurred.",
-    "no_results": "No results found",
-    "clear_search": "Clear search",
-    "searching": "Searching...",
-    "edit": "Edit",
-    "delete": "Delete",
-    "cancel": "Cancel",
-    "password": "Password",
-    "phone": "Phone"
   },
   "centers": {
     "add_title": "Add New Learning Center",
@@ -197,6 +204,32 @@
     "loading": "Loading..."
   },
   "dashboard": {
+    "loading": "System is loading...",
+    "kpi": {
+      "total_centers": "Total Centers",
+      "active_total": "Active / Total",
+      "total_students": "Total Students",
+      "new_this_month": "new this month",
+      "total_revenue": "Total Revenue",
+      "vs_last_month": "vs last month",
+      "active_subs": "Active Subscriptions",
+      "tickets": "Technical Issues",
+      "open_tickets": "Open tickets"
+    },
+    "charts": {
+      "revenue_title": "Revenue Chart (12 months)",
+      "student_growth_title": "Student Growth (Monthly)",
+      "distribution_title": "Distribution by Centers",
+      "top_centers_title": "Top 10 Active Centers"
+    },
+    "table": {
+      "center_name": "Center name",
+      "students_count": "Number of students",
+      "activity": "Activity level"
+    },
+    "recent": {
+      "title": "Recently Registered Centers (Last 5)"
+    },
     "title": "Dashboard Overview",
     "desc": "Get familiar with today's overall system metrics and live analytics.",
     "live_mode": "Live mode active",
@@ -275,5 +308,23 @@
     "total_prefix": "Total",
     "total_suffix": "",
     "show": "Show"
+  },
+
+  "common": {
+    "all": "All",
+    "search": "Search...",
+    "no_results": "No results found",
+    "clear_search": "Clear search",
+    "searching": "Searching...",
+    "edit": "Edit",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "password": "Password",
+    "phone": "Phone",
+    "error": "An error occurred in the system. Please try again."
+  },
+  "status": {
+    "active": "Active",
+    "pending": "Pending"
   }
 }

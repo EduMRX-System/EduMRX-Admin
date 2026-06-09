@@ -53,7 +53,7 @@ export default function StudentsView() {
     queryKey: ["students", page, pageSize, debouncedSearch],
     queryFn: async () => {
       const res = await API.get<IStudentsResponse>(
-        `/api/v1/students/?page=${page}&page_size=${pageSize}&search=${debouncedSearch}`
+        `students/?page=${page}&page_size=${pageSize}&search=${debouncedSearch}`
       );
       return res?.data;
     },
@@ -74,7 +74,7 @@ export default function StudentsView() {
   // O'chirish mutationi
   const { mutate: deleteStudent, isPending: isDeletePending } = useMutation({
     mutationFn: async (id: string) => {
-      await API.delete(`/api/v1/students/${id}/`);
+      await API.delete(`students/${id}/`);
     },
     onSuccess: () => {
       toast.success(t("students.deleteSuccess", "Talaba muvaffaqiyatli o'chirildi"));
@@ -180,7 +180,6 @@ export default function StudentsView() {
                   <th className="py-3.5 px-5">{t("students.table.name", "Student Name")}</th>
                   <th className="py-3.5 px-5">{t("students.table.contact", "Contact Info")}</th>
                   <th className="py-3.5 px-5">{t("students.table.center", "Learning Center")}</th>
-                  <th className="py-3.5 px-5">{t("students.table.address", "Location / Address")}</th>
                   <th className="py-3.5 px-5">{t("students.table.dob", "Date of Birth")}</th>
                   <th className="py-3.5 px-5 text-right">{t("students.table.actions", "Actions")}</th>
                 </tr>
@@ -209,10 +208,6 @@ export default function StudentsView() {
                       {/* Center Skeleton */}
                       <td className="py-4 px-5">
                         <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded-sm w-28" />
-                      </td>
-                      {/* Address Skeleton */}
-                      <td className="py-4 px-5">
-                        <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded-sm w-36" />
                       </td>
                       {/* DOB Skeleton */}
                       <td className="py-4 px-5">

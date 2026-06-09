@@ -357,7 +357,7 @@ export default function EditLearningCenterModal({ center, onClose }: EditModalPr
       data.append("latitude", formData.latitude);
       data.append("longitude", formData.longitude);
       if (logoFile) data.append("logo", logoFile);
-      await API.put(`/api/v1/super-admin/centers/${center.id}/`, data);
+      await API.put(`super-admin/centers/${center.id}/`, data);
     },
     onSuccess: () => {
       toast.success("O'quv markazi muvaffaqiyatli yangilandi!");
