@@ -21,7 +21,6 @@ export default function DirectorsList() {
     const [search, setSearch] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
 
-    // Grid yoki List ko'rinishini boshqarish
     const [viewMode, setViewMode] = useState<"list" | "grid">("list");
 
     const [isAddOpen, setIsAddOpen] = useState(false);
@@ -50,7 +49,6 @@ export default function DirectorsList() {
     const totalCount = data?.count || 0;
     const totalPages = Math.ceil(totalCount / pageSize);
 
-    // Belgilangan pageSize miqdoricha skleton chiqarish uchun massiv
     const dummySkeletons = Array.from({ length: pageSize });
 
     const formatPhoneView = (phone: string) => {

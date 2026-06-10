@@ -50,7 +50,7 @@ export default function StudentsView() {
 
   // Talabalarni yuklash
   const { data: studentsData, isLoading, isError, error } = useQuery({
-    queryKey: ["students", page, pageSize, debouncedSearch],
+    queryKey: ["students-list", page, pageSize, debouncedSearch],
     queryFn: async () => {
       const res = await API.get<IStudentsResponse>(
         `students/?page=${page}&page_size=${pageSize}&search=${debouncedSearch}`
@@ -78,7 +78,9 @@ export default function StudentsView() {
     },
     onSuccess: () => {
       toast.success(t("students.deleteSuccess", "Talaba muvaffaqiyatli o'chirildi"));
-      queryClient.invalidateQueries({ queryKey: ["students"] });
+      queryClient.invalidateQueries({
+        queryKey: ["students-list"],
+      });
       setDeletingStudent(null);
     },
     onError: (err: any) => {

@@ -12,65 +12,12 @@
     "directors": "Directors",
     "centers": "Learning Centers",
     "financial": "Financial",
-    "settings": "Settings"
-  },
-
-  "students": {
-    "title": "Students",
-    "subtitle": "Manage and track student enrollment, performance, and status.",
-    "addBtn": "Add Student",
-    "addBtnShort": "Add Student",
-    "loading": "Loading student list...",
-    "errorTitle": "Error loading data",
-    "emptyTitle": "No students found",
-    "emptySubtitle": "No student information has been entered into the system yet.",
-    "deleteSuccess": "Student successfully deleted",
-    "deleteError": "Error occurred while deleting",
-    "table": {
-      "name": "Student Name",
-      "contact": "Contact Info",
-      "center": "Learning Center",
-      "address": "Location / Address",
-      "dob": "Date of Birth",
-      "actions": "Actions"
-    },
-    "status": {
-      "active": "Active",
-      "frozen": "Frozen",
-      "inactive": "Inactive"
-    },
-    "modal": {
-      "addTitle": "Add New Student",
-      "editTitle": "Edit student",
-      "firstName": "First Name",
-      "lastName": "Last Name",
-      "phone": "Phone Number",
-      "password": "Password",
-      "email": "Email Address",
-      "dob": "Date of Birth",
-      "address": "Address",
-      "mapLabel": "Select Location on Yandex Map",
-      "mapHint": "Click on the map — the marker moves smoothly and the address is detected.",
-      "lat": "Map Latitude (Lat)",
-      "lng": "Map Longitude (Lang)",
-      "status": "Status",
-      "learningCenter": "Learning Center",
-      "notes": "Notes (Optional)",
-      "addingStatus": "Adding Student...",
-      "addBtn": "Add Student",
-      "placeholder": {
-        "firstName": "John",
-        "lastName": "Doe",
-        "address": "Select from map or enter address",
-        "search": "Search...",
-        "center": "Select center...",
-        "notes": "Additional notes about the student..."
-      },
-      "loading": "Loading...",
-      "notFound": "Not found"
-    }
+    "settings": "Settings",
+    "system_users": "System Users"
   },
   "directors": {
+    "profile_title": "Director Profile",
+    "error_loading": "An error occurred while loading director data or the ID is invalid.",
     "edit_title": "Edit Director Details",
     "save_btn": "Save Changes",
     "password_hint": "* Enter a password only if you want to change it, otherwise leave blank.",
@@ -97,7 +44,7 @@
     "first_name": "First Name",
     "last_name": "Last Name",
     "email": "Email Address",
-    "loading": "Loading directors Lisst...",
+    "loading": "Loading directors list...",
     "file_restrictions": "PNG, JPG, WEBP formats, up to 2MB",
     "placeholder_first_name": "Husan",
     "placeholder_last_name": "Yarashev",
@@ -113,6 +60,81 @@
       "emailRequired": "Email is required",
       "passwordRequired": "Password is required",
       "passwordMin": "Password must be at least 6 characters"
+    }
+  },
+  "common": {
+    "system_id": "System ID",
+    "phone": "Phone Number",
+    "email": "Email",
+    "profile_status": "Profile Status",
+    "active": "Active (Access Granted)",
+    "blocked": "Blocked",
+    "created_at": "Date Added to System",
+    "back_to_list": "Back to List",
+    "all": "All",
+    "search": "Search...",
+    "no_results": "No results found",
+    "clear_search": "Clear search",
+    "searching": "Searching...",
+    "edit": "Edit",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "password": "Password",
+    "error": "An error occurred in the system. Please try again."
+  },
+  "students": {
+    "title": "Students",
+    "subtitle": "Manage and track student enrollment, performance, and status.",
+    "addBtn": "Add Student",
+    "addBtnShort": "Add Student",
+    "loading": "Loading student list...",
+    "errorTitle": "Error loading data",
+    "emptyTitle": "No students found",
+    "emptySubtitle": "No student information has been entered into the system yet.",
+    "deleteSuccess": "Student successfully deleted",
+    "deleteError": "Error occurred while deleting",
+    "table": {
+      "name": "Student Name",
+      "contact": "Contact Info",
+      "center": "Learning Center",
+      "address": "Location / Address",
+      "dob": "Date of Birth",
+      "actions": "Actions"
+    },
+    "status": {
+      "active": "Active",
+      "frozen": "Frozen",
+      "inactive": "Inactive"
+    },
+    "modal": {
+      "addTitle": "Add New Student",
+      "editTitle": "Edit Student",
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "phone": "Phone Number",
+      "password": "Password",
+      "email": "Email Address",
+      "dob": "Date of Birth",
+      "address": "Address",
+      "mapLabel": "Select Location on Yandex Map",
+      "mapHint": "Click on the map — the marker moves smoothly and the address is detected.",
+      "lat": "Map Latitude (Lat)",
+      "lng": "Map Longitude (Lng)",
+      "status": "Status",
+      "learningCenter": "Learning Center",
+      "notes": "Notes (Optional)",
+      "addingStatus": "Adding Student...",
+      "addBtn": "Add Student",
+      "placeholder": {
+        "firstName": "John",
+        "lastName": "Doe",
+        "address": "Select from map or enter address",
+        "search": "Search...",
+        "center": "Select center...",
+        "notes": "Additional notes about the student..."
+      },
+      "loading": "Loading...",
+      "notFound": "Not found"
     }
   },
   "finance": {
@@ -205,6 +227,12 @@
   },
   "dashboard": {
     "loading": "System is loading...",
+    "languages": {
+      "select": "Select Language",
+      "uz": "UZ",
+      "ru": "RU",
+      "en": "EN"
+    },
     "kpi": {
       "total_centers": "Total Centers",
       "active_total": "Active / Total",
@@ -230,6 +258,11 @@
     "recent": {
       "title": "Recently Registered Centers (Last 5)"
     },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "pending": "Pending"
+    },
     "title": "Dashboard Overview",
     "desc": "Get familiar with today's overall system metrics and live analytics.",
     "live_mode": "Live mode active",
@@ -237,7 +270,6 @@
     "extended_data": "Extended data:",
     "total_students": "Total Students",
     "active_students": "Active Students",
-    "new_this_month": "New this month",
     "trial_lessons": "Trial lessons",
     "active_groups": "Active Groups",
     "general_groups": "General Groups",
@@ -267,7 +299,6 @@
       "new_this_month": "New this month",
       "demo_requests": "Demo requests",
       "total_saas_users": "Total SaaS Users",
-      "total_students": "Total students",
       "total_teachers": "Total teachers",
       "system_admins": "System admins",
       "mrr_title": "Monthly Recurring Revenue (MRR)",
@@ -283,7 +314,6 @@
       "gateway_traffic": "Gateway Traffic",
       "db_locks": "Database Locks",
       "memory_usage": "Memory Usage",
-      "realtime_note": "System parameters update in real time",
       "charts": {
         "mrr_analytics": "SaaS Revenue Growth",
         "mrr_sub": "MRR & Net Profit",
@@ -308,23 +338,5 @@
     "total_prefix": "Total",
     "total_suffix": "",
     "show": "Show"
-  },
-
-  "common": {
-    "all": "All",
-    "search": "Search...",
-    "no_results": "No results found",
-    "clear_search": "Clear search",
-    "searching": "Searching...",
-    "edit": "Edit",
-    "delete": "Delete",
-    "cancel": "Cancel",
-    "password": "Password",
-    "phone": "Phone",
-    "error": "An error occurred in the system. Please try again."
-  },
-  "status": {
-    "active": "Active",
-    "pending": "Pending"
   }
 }

@@ -23,30 +23,20 @@ import DeleteTeacherModal from "@/components/sections/teachers/DeleteTeacherModa
 import Title from "@/components/ui/Title";
 import Text from "@/components/ui/Text";
 import Image from "next/image";
-
-interface Teacher {
-  id: string;
-  full_name: string;
-  email: string;
-  phone: string;
-  specialization: string;
-  experience: number;
-  avatar?: string | null;
-  center_name?: string;
-}
+import { ITeacher } from "@/types";
 
 export default function TeachersView() {
   const queryClient = useQueryClient();
   const [isAddOpen, setIsAddOpen] = useState(false);
-  const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
-  const [deletingTeacher, setDeletingTeacher] = useState<Teacher | null>(null);
+  const [editingTeacher, setEditingTeacher] = useState<ITeacher | null>(null);
+  const [deletingTeacher, setDeletingTeacher] = useState<ITeacher | null>(null);
 
   const {
     data: teachers,
     isLoading,
     isError,
     error,
-  } = useQuery<Teacher[]>({
+  } = useQuery<ITeacher[]>({
     queryKey: ["teachers"],
     queryFn: async () => {
       const res = await API.get("super-admin/teachers/");

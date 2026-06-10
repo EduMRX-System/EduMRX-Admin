@@ -22,6 +22,9 @@ import {
 import Title from "@/components/ui/Title";
 import Text from "@/components/ui/Text";
 import MoliyaChart from "@/components/sections/payments/FinancialChart";
+import { CentersParams, FinanceCentersResponse, FinanceSummary, TransactionsResponse } from "@/types";
+import FinancialStatSkeleton from "@/components/sections/payments/FinancialStatSkeleton";
+import FinancialTableRowSkeleton from "@/components/sections/payments/FinancialTableRowSkeleton";
 
 /* ── 1. AXIOS CLIENT INSTANCE & INTERCEPTORS ────────────────── */
 const DataBaseURL = process.env.NEXT_PUBLIC_DataBaseURL;
@@ -61,62 +64,7 @@ API.interceptors.response.use(
 );
 
 /* ── 2. TYPES & INTERFACES ─────────────────────────────────── */
-export interface FinanceSummary {
-  total_revenue: number;
-  month_revenue: number;
-  month_revenue_change: number;
-  active_centers: number;
-  total_centers: number;
-  pending_debts: number;
-  pending_debts_students_count: number;
-  pending_debts_change: number;
-}
 
-export interface FinanceCenter {
-  id: number;
-  name: string;
-  director: string;
-  students_count: number;
-  month_revenue: number;
-  total_revenue: number;
-  status: "active" | "inactive";
-}
-
-export interface FinanceCentersResponse {
-  data: FinanceCenter[];
-  meta: {
-    total: number;
-    page: number;
-    per_page: number;
-    total_revenue_sum: number;
-  };
-}
-
-export interface Transaction {
-  id: number;
-  created_at: string;
-  center_name: string;
-  amount: number;
-  payment_method: "uzcard" | "humo" | "cash";
-}
-
-export interface TransactionsResponse {
-  data: Transaction[];
-  meta: {
-    total: number;
-    page: number;
-    per_page: number;
-  };
-}
-
-export interface CentersParams {
-  status?: "all" | "active" | "inactive";
-  search?: string;
-  sort_by?: "month_revenue" | "total_revenue" | "students_count";
-  sort_dir?: "asc" | "desc";
-  page?: number;
-  per_page?: number;
-}
 
 /* ── 3. INLINE API DIRECT CALLS (404 VA SLASH TUZATILGAN) ──── */
 const fetchSummary = () =>
@@ -172,41 +120,6 @@ function getMethodIcon(method: string) {
   return <Banknote className="w-3.5 h-3.5" />;
 }
 
-/* ── 5. SKELETONS ───────────────────────────────────────────── */
-function StatSkeleton() {
-  return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs animate-pulse">
-      <div className="flex items-center justify-between mb-3">
-        <div className="w-11 h-11 rounded-xl bg-slate-100 dark:bg-slate-800" />
-        <div className="w-14 h-5 rounded-md bg-slate-100 dark:bg-slate-800" />
-      </div>
-      <div className="w-24 h-3 rounded bg-slate-100 dark:bg-slate-800 mb-2" />
-      <div className="w-36 h-6 rounded bg-slate-100 dark:bg-slate-800 mb-1.5" />
-      <div className="w-20 h-3 rounded bg-slate-100 dark:bg-slate-800" />
-    </div>
-  );
-}
-
-function TableRowSkeleton() {
-  return (
-    <tr>
-      <td className="py-3.5 px-5">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 animate-pulse" />
-          <div className="w-28 h-3.5 rounded bg-slate-100 dark:bg-slate-800 animate-pulse" />
-        </div>
-      </td>
-      {[...Array(5)].map((_, i) => (
-        <td key={i} className="py-3.5 px-5">
-          <div className="w-20 h-3.5 rounded bg-slate-100 dark:bg-slate-800 animate-pulse" />
-        </td>
-      ))}
-      <td className="py-3.5 px-5 text-right">
-        <div className="w-16 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 animate-pulse ml-auto" />
-      </td>
-    </tr>
-  );
-}
 
 /* ── 6. MAIN VIEW COMPONENT ─────────────────────────────────── */
 export default function FinancialView() {
@@ -320,7 +233,7 @@ export default function FinancialView() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {summaryLoading
-          ? [...Array(4)].map((_, i) => <StatSkeleton key={i} />)
+          ? [...Array(4)].map((_, i) => <FinancialStatSkeleton key={i} />)
           : stats.map((item, idx) => (
             <div
               key={idx}
@@ -518,7 +431,7 @@ export default function FinancialView() {
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm text-slate-700 dark:text-slate-300">
               {centersLoading
-                ? [...Array(5)].map((_, i) => <TableRowSkeleton key={i} />)
+                ? [...Array(5)].map((_, i) => <FinancialTableRowSkeleton key={i} />)
                 : centers.map((center: any) => (
                   <tr key={center.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                     <td className="py-3.5 px-5">

@@ -1,6 +1,6 @@
 "use client";
 
-import { ILearningCenter } from "@/types"; // O'zingizning types yo'lingizni qo'ying
+import { ILearningCenter } from "@/types";
 import { t } from "i18next";
 import {
   Building2,
@@ -13,6 +13,7 @@ import {
   Users,
 } from "lucide-react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 interface CenterItemProps {
   center: ILearningCenter;
@@ -31,11 +32,20 @@ export default function CenterItem({
   formatPhone,
   getSubscriptionCls,
 }: CenterItemProps) {
+  const router = useRouter();
   const subStatus = getSubscriptionCls(center.subscription_expires);
+
+  // Detail sahifasiga o'tish funksiyasi
+  const handleRowClick = () => {
+    router.push(`/centers/${center.id}`);
+  };
 
   if (viewMode === "list") {
     return (
-      <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
+      <tr
+        onClick={handleRowClick}
+        className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group cursor-pointer"
+      >
         {/* Center Details */}
         <td className="py-4 px-5">
           <div className="flex items-center gap-3">
@@ -131,14 +141,20 @@ export default function CenterItem({
         <td className="py-4 px-5 text-right">
           <div className="flex items-center justify-end gap-1.5">
             <button
-              onClick={() => onEdit(center)}
+              onClick={(e) => {
+                e.stopPropagation(); // Qator klikini to'xtatish
+                onEdit(center);
+              }}
               className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950 border border-transparent hover:border-indigo-100 dark:hover:border-indigo-900 transition-all cursor-pointer"
               title={t("common.edit")}
             >
               <Edit2 className="w-3.5 h-3.5" />
             </button>
             <button
-              onClick={() => onDelete(center.id, center.name)}
+              onClick={(e) => {
+                e.stopPropagation(); // Qator klikini to'xtatish
+                onDelete(center.id, center.name);
+              }}
               className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950 border border-transparent hover:border-red-100 dark:hover:border-red-900 transition-all cursor-pointer"
               title={t("common.delete")}
             >
@@ -152,13 +168,15 @@ export default function CenterItem({
 
   // GRID KO'RINISHI (Grid Mode)
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 p-5 flex flex-col justify-between hover:shadow-md transition-all group relative">
+    <div
+      onClick={handleRowClick}
+      className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 p-5 flex flex-col justify-between hover:shadow-md transition-all group relative cursor-pointer"
+    >
       <div>
         {/* Header (Logo + Status) */}
         <div className="flex items-start justify-between gap-4 mb-4">
           <div className="w-12 h-12 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex items-center justify-center overflow-hidden shrink-0">
             {center.logo ? (
-              // eslint-disable-next-line @next/next/no-img-element
               <Image
                 width={40}
                 height={40}
@@ -229,13 +247,19 @@ export default function CenterItem({
 
         <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
           <button
-            onClick={() => onEdit(center)}
+            onClick={(e) => {
+              e.stopPropagation(); // Card klikini to'xtatish
+              onEdit(center);
+            }}
             className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-500 dark:text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950 border border-slate-100 dark:border-slate-700 hover:border-indigo-100 dark:hover:border-indigo-900 transition-all cursor-pointer"
           >
             <Edit2 className="w-3 h-3" />
           </button>
           <button
-            onClick={() => onDelete(center.id, center.name)}
+            onClick={(e) => {
+              e.stopPropagation(); // Card klikini to'xtatish
+              onDelete(center.id, center.name);
+            }}
             className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-500 dark:text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950 border border-slate-100 dark:border-slate-700 hover:border-red-100 dark:hover:border-red-900 transition-all cursor-pointer"
           >
             <Trash2 className="w-3 h-3" />

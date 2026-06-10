@@ -13,6 +13,8 @@ import DeleteLearningCenterModal from "@/components/sections/learningCenter/Dele
 import EditLearningCenterModal from "@/components/sections/learningCenter/EditLearningCenterModal";
 import PaginationControl from "@/components/ui/PaginationControl";
 import { t } from "i18next";
+import LearningCenterSikleton from "@/components/sections/learningCenter/LearningCenterSikleton";
+import LearningCenterGridSikleton from "@/components/sections/learningCenter/LearningCenterGridSikleton";
 
 export default function LearningCentersList() {
     const [pageSize, setPageSize] = useState(5);
@@ -49,7 +51,6 @@ export default function LearningCentersList() {
     const totalCount = data?.count || 0;
     const totalPages = Math.ceil(totalCount / pageSize);
 
-    // Belgingalgan pageSize miqdoricha miltillovchi qatorlarni chiqarish uchun massiv
     const dummySkeletons = Array.from({ length: pageSize });
 
     const formatPhoneView = (phone: string) => {
@@ -143,13 +144,6 @@ export default function LearningCentersList() {
                 </div>
             )}
 
-            {/* QIDIRUV ANIMATSIYASI */}
-            {isLoading && debouncedSearch && (
-                <div className="text-xs text-indigo-600 dark:text-indigo-400 animate-pulse py-2">
-                    {t("common.searching")}
-                </div>
-            )}
-
             {/* BO'SH HOLAT */}
             {!isLoading && !isError && centersList.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-slate-900 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-center min-h-[380px] transition-colors">
@@ -191,35 +185,7 @@ export default function LearningCentersList() {
                                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm text-slate-700 dark:text-slate-300">
                                     {isLoading ? (
                                         dummySkeletons.map((_, i) => (
-                                            <tr key={i} className="animate-pulse">
-                                                <td className="py-4 px-5">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 bg-slate-200 dark:bg-slate-800 rounded-xl" />
-                                                        <div className="space-y-2">
-                                                            <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded-sm w-32" />
-                                                            <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded-sm w-20" />
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="py-4 px-5">
-                                                    <div className="space-y-2">
-                                                        <div className="h-3.5 bg-slate-200 dark:bg-slate-800 rounded-sm w-28" />
-                                                        <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded-sm w-24" />
-                                                    </div>
-                                                </td>
-                                                <td className="py-4 px-5">
-                                                    <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded-sm w-24" />
-                                                </td>
-                                                <td className="py-4 px-5">
-                                                    <div className="h-6 bg-slate-200 dark:bg-slate-800 rounded-md w-16" />
-                                                </td>
-                                                <td className="py-4 px-5">
-                                                    <div className="h-6 bg-slate-200 dark:bg-slate-800 rounded-md w-24" />
-                                                </td>
-                                                <td className="py-4 px-5 text-right">
-                                                    <div className="h-8 bg-slate-200 dark:bg-slate-800 rounded-lg w-16 inline-block" />
-                                                </td>
-                                            </tr>
+                                            <LearningCenterSikleton key={i} />
                                         ))
                                     ) : (
                                         centersList.map((center: ILearningCenter) => (
@@ -242,26 +208,7 @@ export default function LearningCentersList() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                             {isLoading ? (
                                 dummySkeletons.map((_, i) => (
-                                    <div key={i} className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-100 dark:border-slate-800 space-y-4 animate-pulse">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-11 h-11 bg-slate-200 dark:bg-slate-800 rounded-xl" />
-                                                <div className="space-y-2">
-                                                    <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded-sm w-28" />
-                                                    <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded-sm w-16" />
-                                                </div>
-                                            </div>
-                                            <div className="h-6 bg-slate-200 dark:bg-slate-800 rounded-md w-14" />
-                                        </div>
-                                        <div className="space-y-2 pt-2 border-t border-slate-50 dark:border-slate-800">
-                                            <div className="h-3.5 bg-slate-200 dark:bg-slate-800 rounded-sm w-full" />
-                                            <div className="h-3.5 bg-slate-200 dark:bg-slate-800 rounded-sm w-2/3" />
-                                        </div>
-                                        <div className="flex items-center justify-between pt-2">
-                                            <div className="h-6 bg-slate-200 dark:bg-slate-800 rounded-md w-24" />
-                                            <div className="h-8 bg-slate-200 dark:bg-slate-800 rounded-lg w-16" />
-                                        </div>
-                                    </div>
+                                    <LearningCenterGridSikleton key={i} />
                                 ))
                             ) : (
                                 centersList.map((center: ILearningCenter) => (

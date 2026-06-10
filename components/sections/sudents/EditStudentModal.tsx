@@ -148,7 +148,9 @@ export default function EditStudentModal({ student, onClose }: EditStudentModalP
         },
         onSuccess: () => {
             toast.success(t("students.toast.editSuccess", "Talaba ma'lumotlari muvaffaqiyatli yangilandi"));
-            queryClient.invalidateQueries({ queryKey: ["students"] });
+            queryClient.invalidateQueries({
+                queryKey: ["students-list"],
+            });
             onClose();
         },
         onError: (err: any) => {

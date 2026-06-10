@@ -3,11 +3,12 @@
 import { t } from "i18next";
 import { User, Phone, Mail, Edit2, Trash2, Calendar } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link"; // Next.js havola komponenti import qilindi
 
 export interface IDirector {
   id: string;
-  first_name: string;   // API formatiga moslandi
-  last_name: string;    // API formatiga moslandi
+  first_name: string;
+  last_name: string;
   phone: string;
   email: string;
   avatar?: string | null;
@@ -29,9 +30,8 @@ export default function DirectorItem({
   viewMode,
   onEdit,
   onDelete,
-  formatPhone,
+  formatPhone
 }: DirectorItemProps) {
-  // Ism va familiyani birlashtiramiz, agar kelmay qolsa "Ismsiz" deb ko'rsatiladi
   const fullName = director.first_name || director.last_name
     ? `${director.first_name || ""} ${director.last_name || ""}`.trim()
     : "—";
@@ -54,10 +54,13 @@ export default function DirectorItem({
   if (viewMode === "list") {
     return (
       <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
-        {/* Avatar va To'liq Ism */}
+        {/* Avatar va To'liq Ism - Link orqali detail sahifaga o'tadi */}
         <td className="py-4 px-5">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center overflow-hidden shrink-0">
+          <Link
+            href={`/directors/${director.id}`}
+            className="flex items-center gap-3 cursor-pointer group/name select-none"
+          >
+            <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center overflow-hidden shrink-0 group-hover/name:border-indigo-400 transition-colors">
               {director.avatar ? (
                 <Image
                   src={getAvatarUrl(director.avatar)}
@@ -67,18 +70,18 @@ export default function DirectorItem({
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <User className="w-5 h-5 text-slate-400" />
+                <User className="w-5 h-5 text-slate-400 group-hover/name:text-indigo-500 transition-colors" />
               )}
             </div>
             <div>
-              <div className="font-semibold text-slate-900 dark:text-slate-100 leading-tight">
+              <div className="font-semibold text-slate-900 dark:text-slate-100 leading-tight group-hover/name:text-indigo-600 dark:group-hover/name:text-indigo-400 transition-colors">
                 {fullName}
               </div>
               <div className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5 font-mono">
                 ID: {director.id.slice(0, 8)}...
               </div>
             </div>
-          </div>
+          </Link>
         </td>
 
         {/* Telefon va Email */}
@@ -103,18 +106,24 @@ export default function DirectorItem({
           </div>
         </td>
 
-        {/* Amallar */}
+        {/* Amallar (Tahrirlash va O'chirish) */}
         <td className="py-4 px-5 text-right">
           <div className="flex items-center justify-end gap-1.5">
             <button
-              onClick={() => onEdit(director)}
+              onClick={(e) => {
+                e.stopPropagation(); // Satr yoki Link klikini to'xtatish uchun
+                onEdit(director);
+              }}
               className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950 border border-transparent hover:border-indigo-100 dark:hover:border-indigo-900 transition-all cursor-pointer"
               title="Tahrirlash"
             >
               <Edit2 className="w-3.5 h-3.5" />
             </button>
             <button
-              onClick={() => onDelete(director.id, fullName)}
+              onClick={(e) => {
+                e.stopPropagation(); // Satr yoki Link klikini to'xtatish uchun
+                onDelete(director.id, fullName);
+              }}
               className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950 border border-transparent hover:border-red-100 dark:hover:border-red-900 transition-all cursor-pointer"
               title="O'chirish"
             >
@@ -130,8 +139,12 @@ export default function DirectorItem({
   return (
     <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xs border border-slate-100 dark:border-slate-800 p-5 flex flex-col justify-between hover:shadow-md transition-all group">
       <div>
-        <div className="flex items-center gap-3.5 mb-4">
-          <div className="w-12 h-12 rounded-full bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex items-center justify-center overflow-hidden shrink-0">
+        {/* Avatar va Ism - Link orqali detail sahifaga o'tadi */}
+        <Link
+          href={`/directors/${director.id}`}
+          className="flex items-center gap-3.5 mb-4 cursor-pointer group/gridName select-none"
+        >
+          <div className="w-12 h-12 rounded-full bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex items-center justify-center overflow-hidden shrink-0 group-hover/gridName:border-indigo-400 transition-colors">
             {director.avatar ? (
               <Image
                 width={48}
@@ -141,18 +154,18 @@ export default function DirectorItem({
                 className="w-full h-full object-cover"
               />
             ) : (
-              <User className="w-6 h-6 text-slate-400" />
+              <User className="w-6 h-6 text-slate-400 group-hover/gridName:text-indigo-500 transition-colors" />
             )}
           </div>
           <div>
-            <h4 className="font-bold text-slate-900 dark:text-slate-100 text-base line-clamp-1">
+            <h4 className="font-bold text-slate-900 dark:text-slate-100 text-base line-clamp-1 group-hover/gridName:text-indigo-600 dark:group-hover/gridName:text-indigo-400 transition-colors">
               {fullName}
             </h4>
             <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500 block mt-0.5">
               {t("directors.role")}
             </span>
           </div>
-        </div>
+        </Link>
 
         <div className="space-y-2.5 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400 mb-4">
           <div className="flex items-center gap-2">
@@ -173,13 +186,19 @@ export default function DirectorItem({
 
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
-            onClick={() => onEdit(director)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(director);
+            }}
             className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-500 dark:text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950 border border-slate-100 dark:border-slate-700 hover:border-indigo-100 dark:hover:border-indigo-900 transition-all cursor-pointer"
           >
             <Edit2 className="w-3 h-3" />
           </button>
           <button
-            onClick={() => onDelete(director.id, fullName)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(director.id, fullName);
+            }}
             className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-500 dark:text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950 border border-slate-100 dark:border-slate-700 hover:border-red-100 dark:hover:border-red-900 transition-all cursor-pointer"
           >
             <Trash2 className="w-3 h-3" />

@@ -54,9 +54,8 @@ export default function LeftComponent() {
     <div className="h-screen flex flex-col bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-slate-800 transition-all duration-300 relative">
       {/* BRAND */}
       <div
-        className={`flex items-center transition-all duration-300 ${
-          collapsed ? "px-3 py-6 justify-center gap-0" : "p-6 justify-between gap-3"
-        }`}
+        className={`flex items-center transition-all duration-300 ${collapsed ? "px-3 py-6 justify-center gap-0" : "p-6 justify-between gap-3"
+          }`}
       >
         <div className={`flex items-center gap-3 ${collapsed ? "w-0 overflow-hidden" : ""}`}>
           <span className={`w-10 h-10 text-white bg-[#4F46E5] text-base flex justify-center items-center rounded-lg font-bold shrink-0 ${collapsed ? "hidden" : ""}`}>
@@ -91,7 +90,12 @@ export default function LeftComponent() {
       {/* NAVIGATSIYA */}
       <nav className="flex-1 mt-4 px-2 overflow-y-auto overflow-x-hidden">
         {navlinks.map((item) => {
-          const isActive = pathname === item.href;
+          // Dynamic Active Logic:
+          // Dashboard uchun aniq tenglik, boshqa modullar uchun sub-path (starts with) tekshiruvi
+          const isActive =
+            item.href === "/"
+              ? pathname === "/"
+              : pathname === item.href || pathname.startsWith(`${item.href}/`);
 
           return (
             <Link
@@ -142,8 +146,6 @@ export default function LeftComponent() {
           );
         })}
       </nav>
-
-
     </div>
   );
 }

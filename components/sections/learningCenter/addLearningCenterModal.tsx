@@ -10,6 +10,7 @@ import { Building2, Upload, Link, Image as ImageIcon, X, Search, ChevronDown, Ma
 import { toast } from "react-toastify";
 import { t } from "i18next";
 import Image from "next/image";
+import { Director } from "@/types";
 
 function formatUzPhone(raw: string): string {
     const d = raw.slice(0, 9);
@@ -91,6 +92,10 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
     const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
     const suggestionsRef = useRef<HTMLDivElement>(null);
     const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+
+    const [debouncedSearch, setDebouncedSearch] = useState("");
+    const [currentPage, setCurrentPage] = useState(1);
 
     const {
         register,
@@ -300,15 +305,28 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
         },
         onError: (error: any) => {
             const responseData = error?.response?.data;
+
             if (responseData && typeof responseData === "object") {
                 Object.keys(responseData).forEach((key) => {
+                    const message = Array.isArray(responseData[key])
+                        ? responseData[key][0]
+                        : responseData[key];
+
+                    // 1. Agar formada tegishli input bo'lsa, uni belgilaymiz
                     if (key in schema.fields) {
                         setError(key as any, {
                             type: "manual",
-                            message: responseData[key][0],
+                            message: message,
                         });
+                    }
+
+                    // 2. Toastda chiqarish uchun chiroyli formatlash
+                    // 'non_field_errors' yoki 'detail' kabi umumiy xatolarni alohida tutamiz
+                    if (key === "detail" || key === "non_field_errors") {
+                        toast.error(message);
                     } else {
-                        toast.error(`${key}: ${responseData[key][0]}`);
+                        // Input xatosini toastda ham ko'rsatishni istasangiz:
+                        toast.error(`${key}: ${message}`);
                     }
                 });
             } else {
@@ -363,29 +381,72 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
             : "border-slate-200 dark:border-slate-700 focus:border-indigo-400 dark:focus:border-indigo-600"
         }`;
 
+    interface FetchDirectorsResponse {
+        count: number;
+        next: string | null;
+        previous: string | null;
+        results: Director[];
+    }
+
+
+    const fetchDirectors = async (page: number, search: string): Promise<FetchDirectorsResponse> => {
+        const response = await API.get("super-admin/directors/", {
+            params: {
+                page: page,
+                page_size: 5,
+                search: search || undefined,
+            },
+        });
+        return response.data;
+    };
+
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedSearch(searchTerm);
+            setCurrentPage(1);
+        }, 400);
+
+        return () => clearTimeout(handler);
+    }, [searchTerm]);
+
+    const { data, isLoading, isFetching } = useQuery({
+        queryKey: ["directors", currentPage, debouncedSearch],
+        queryFn: () => fetchDirectors(currentPage, debouncedSearch),
+    });
+
+    const directorsList = data?.results || [];
+    const totalCount = data?.count || 0;
+    const totalPages = Math.ceil(totalCount / 5);
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop overlay */}
             <div
                 className={`fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity duration-500 ${isMounted ? "opacity-100" : "opacity-0"}`}
                 onClick={onClose}
             />
 
+            {/* Modal Content - Max balandlik va ichki scroll bilan */}
             <div
                 className={`bg-white dark:bg-slate-900 p-6 rounded-xl max-w-xl w-full max-h-[90vh] overflow-y-auto relative z-10 shadow-2xl border border-slate-100 dark:border-slate-800 transform transition-all duration-500 ease-out ${isMounted ? "opacity-100 translate-y-0 scale-100" : "opacity-0 -translate-y-12 scale-95"
                     }`}
             >
+                {/* STICKY "X" BUTTON: Kontent scroll bo'lganda ham tepada qimirlamay turadi */}
                 {onClose && (
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors"
-                    >
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
+                    <div className="sticky top-0 z-30 float-right clear-both">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="absolute -top-2 -right-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border border-slate-100 dark:border-slate-800 shadow-sm cursor-pointer transition-colors"
+                        >
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
                 )}
 
+                {/* Icon & Title */}
                 <div className="mb-[10px] border border-slate-200 dark:border-slate-700 shadow-sm w-[44px] h-[44px] rounded-lg flex justify-center items-center text-indigo-600 bg-indigo-50/10 dark:bg-indigo-950/20">
                     <Building2 className="w-6 h-6" />
                 </div>
@@ -421,23 +482,14 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
                         </div>
                     </div>
 
-                    {/* Logo */}
+                    {/* Logo Section */}
                     <div>
-                        <div className="flex items-center justify-between mb-1.5">
-                            <label className="text-[14px] text-slate-600 dark:text-slate-300 font-semibold">{t("centers.logo")}</label>
-                        </div>
-
+                        <label className="text-[14px] text-slate-600 dark:text-slate-300 mb-1.5 block font-semibold">{t("centers.logo")}</label>
                         <div className="flex gap-4 items-center border border-slate-200 dark:border-slate-700 rounded-xl p-3 bg-slate-50/50 dark:bg-slate-800/50 transition-colors">
                             <div className="relative w-16 h-16 min-w-16 rounded-lg border border-dashed border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 flex items-center justify-center overflow-hidden group">
                                 {logoPreview ? (
                                     <>
-                                        <Image
-                                            src={logoPreview}
-                                            alt="Logo preview"
-                                            width={200}
-                                            height={200}
-                                            className="w-full h-full object-cover"
-                                        />
+                                        <img src={logoPreview} alt="Logo preview" className="w-full h-full object-cover" />
                                         <button
                                             type="button"
                                             onClick={clearLogo}
@@ -452,51 +504,52 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
                             </div>
 
                             <div className="w-full">
-                                <>
-                                    <input
-                                        ref={fileInputRef}
-                                        id="logo-file-input"
-                                        type="file"
-                                        accept="image/png,image/jpeg,image/jpg,image/webp"
-                                        onChange={handleFileChange}
-                                        className="hidden"
-                                    />
-                                    <label
-                                        htmlFor="logo-file-input"
-                                        className="inline-flex items-center gap-2 px-4 h-[38px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all cursor-pointer"
-                                    >
-                                        <Upload className="w-3.5 h-3.5" /> {t("centers.choose_image")}
-                                    </label>
-                                    <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">{t("centers.image_hint")}</p>
-                                </>
+                                <input
+                                    ref={fileInputRef}
+                                    id="logo-file-input"
+                                    type="file"
+                                    accept="image/png,image/jpeg,image/jpg,image/webp"
+                                    onChange={handleFileChange}
+                                    className="hidden"
+                                />
+                                <label
+                                    htmlFor="logo-file-input"
+                                    className="inline-flex items-center gap-2 px-4 h-[38px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all cursor-pointer"
+                                >
+                                    <Upload className="w-3.5 h-3.5" /> {t("centers.choose_image")}
+                                </label>
+                                <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">{t("centers.image_hint")}</p>
                             </div>
                         </div>
                     </div>
 
-                    {/* Director dropdown */}
+                    {/* Director Dropdown */}
                     <div ref={dropdownRef} className="relative">
                         <label className="text-[14px] text-slate-600 dark:text-slate-300 mb-1 block font-semibold">
                             {t("centers.director")}
                         </label>
 
-                        {/* Dropdown Tanlagich (ID o'rniga Ism-Familiya chiqadigan joy) */}
+                        {/* Dropdown Trigger */}
                         <div
-                            onClick={() => !isDirectorsLoading && setIsOpen(!isOpen)}
+                            onClick={() => setIsOpen(!isOpen)}
                             className={`border rounded-lg w-full h-[40px] px-3 text-[14px] flex items-center justify-between cursor-pointer bg-white dark:bg-slate-800 transition-all
-        ${errors.director ? "border-red-300 dark:border-red-800" : "border-slate-200 dark:border-slate-700"}
-        ${isDirectorsLoading ? "opacity-60 cursor-not-allowed" : ""}`}
+            ${errors.director ? "border-red-300 dark:border-red-800" : "border-slate-200 dark:border-slate-700"}`}
                         >
                             <span className={selectedDirectorName ? "text-slate-900 dark:text-slate-100" : "text-slate-400 dark:text-slate-500"}>
-                                {isDirectorsLoading ? t("centers.loading_directors") : selectedDirectorName || t("centers.select_director")}
+                                {selectedDirectorName || t("centers.select_director")}
                             </span>
-                            <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+                            {(isLoading || isFetching) ? (
+                                <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />
+                            ) : (
+                                <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+                            )}
                         </div>
 
-                        {/* Dropdown Oyna */}
+                        {/* Dropdown Menu */}
                         {isOpen && (
                             <div className="absolute left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 overflow-hidden flex flex-col animate-in fade-in-50 duration-150">
 
-                                {/* Qidiruv Inputi */}
+                                {/* Search Input */}
                                 <div className="p-2 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2 bg-slate-50 dark:bg-slate-800/80 sticky top-0 z-10">
                                     <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                                     <input
@@ -508,48 +561,68 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
                                         autoFocus
                                     />
                                     {searchTerm && (
-                                        <X onClick={() => setSearchTerm("")} className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer" />
+                                        <X
+                                            onClick={() => setSearchTerm("")}
+                                            className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                                        />
                                     )}
                                 </div>
 
-                                {/* Qat'iy balandlik berilgan (Scroll) Ro'yxat */}
-                                <div className="overflow-y-auto max-h-[200px] flex-1 divide-y divide-slate-50 dark:divide-slate-700/50">
-                                    {filteredDirectors.length > 0 ? (
-                                        filteredDirectors.map((dir: any) => {
-                                            const fullName = dir.full_name || `${dir.first_name || ""} ${dir.last_name || ""}`.trim() || dir.id;
-                                            const formattedPhone = dir.phone ? `+${dir.phone.replace(/\D/g, "")}` : "";
-
+                                {/* Directors List */}
+                                <div className="overflow-y-auto max-h-[180px] divide-y divide-slate-50 dark:divide-slate-700/50">
+                                    {directorsList.length > 0 ? (
+                                        directorsList.map((dir) => {
+                                            const fullName = `${dir.first_name || ""} ${dir.last_name || ""}`.trim() || "Ismsiz Direktor";
                                             return (
                                                 <div
                                                     key={dir.id}
                                                     onClick={() => {
-                                                        setSelectedDirectorName(fullName); // Inputda ism ko'rinadi
-                                                        setValue("director", dir.id, { shouldValidate: true }); // Formaga baribir ID saqlanadi
+                                                        setSelectedDirectorName(fullName);
+                                                        setValue("director", dir.id, { shouldValidate: true });
                                                         setIsOpen(false);
-                                                        setSearchTerm("");
                                                     }}
                                                     className={`px-3 py-2 text-[13px] hover:bg-indigo-50 dark:hover:bg-indigo-950/60 cursor-pointer transition-colors flex flex-col gap-0.5
-                                ${watch("director") === dir.id ? "bg-indigo-50/60 dark:bg-indigo-950/40 font-medium text-indigo-600" : "text-slate-900 dark:text-slate-100"}`}
+                      ${watch("director") === dir.id ? "bg-indigo-50/60 dark:bg-indigo-950/40 font-medium text-indigo-600" : "text-slate-900 dark:text-slate-100"}`}
                                                 >
                                                     <span className="font-medium">{fullName}</span>
-                                                    {formattedPhone && (
-                                                        <span className="text-[11px] text-slate-400 dark:text-slate-500 flex items-center gap-1">
-                                                            <Phone className="w-2.5 h-2.5" />
-                                                            {formattedPhone}
-                                                        </span>
-                                                    )}
+                                                    {dir.phone && <span className="text-[11px] text-slate-400 dark:text-slate-500">+{dir.phone}</span>}
                                                 </div>
                                             );
                                         })
                                     ) : (
                                         <div className="px-3 py-4 text-xs text-center text-slate-400 dark:text-slate-500">
-                                            {t("common.no_results")}
+                                            {isLoading || isFetching ? "Yuklanmoqda..." : t("common.no_results")}
                                         </div>
                                     )}
                                 </div>
+
+                                {/* Pagination Controls inside Dropdown Footer */}
+                                {totalPages > 1 && (
+                                    <div className="p-2 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50 text-xs">
+                                        <button
+                                            type="button"
+                                            disabled={currentPage === 1}
+                                            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                                            className="px-2 py-1 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded disabled:opacity-50 cursor-pointer text-slate-700 dark:text-slate-200"
+                                        >
+                                            Oldingi
+                                        </button>
+                                        <span className="text-slate-500 dark:text-slate-400">
+                                            {currentPage} / {totalPages}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            disabled={currentPage === totalPages}
+                                            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                                            className="px-2 py-1 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded disabled:opacity-50 cursor-pointer text-slate-700 dark:text-slate-200"
+                                        >
+                                            Keyingi
+                                        </button>
+                                    </div>
+                                )}
+
                             </div>
                         )}
-                        {errors.director && <p className="text-red-400 text-[11px] mt-1">{errors.director.message}</p>}
                     </div>
 
                     {/* Phone & Email */}
@@ -584,14 +657,13 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
                         </div>
                     </div>
 
-                    {/* ═══════════════════════ YANDEX MAP ═══════════════════════ */}
+                    {/* Yandex Map Section */}
                     <div>
                         <label className="text-[14px] text-slate-600 dark:text-slate-300 mb-1 font-semibold flex items-center gap-1.5">
                             <MapPin className="w-3.5 h-3.5 text-indigo-500" />
-                            {t("centers.location") || "Joylashuv"}
+                            {t("centers.location")}
                         </label>
 
-                        {/* Address search */}
                         <div className="relative mb-2" ref={suggestionsRef}>
                             <div className="relative flex items-center">
                                 <Search className="absolute left-3 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
@@ -599,15 +671,11 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
                                     type="text"
                                     value={addressSearchQuery}
                                     onChange={(e) => handleAddressSearch(e.target.value)}
-                                    placeholder={t("centers.address_placeholder") || "Manzilni kiriting yoki xaritadan tanlang..."}
-                                    className={`border rounded-lg w-full h-[40px] pl-9 pr-9 text-[14px] outline-none transition-all bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 ${errors.address
-                                        ? "border-red-300 dark:border-red-800"
-                                        : "border-slate-200 dark:border-slate-700 focus:border-indigo-400 dark:focus:border-indigo-600"
+                                    placeholder={t("centers.address_placeholder")}
+                                    className={`border rounded-lg w-full h-[40px] pl-9 pr-9 text-[14px] outline-none transition-all bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 ${errors.address ? "border-red-300 dark:border-red-800" : "border-slate-200 dark:border-slate-700 focus:border-indigo-400 dark:focus:border-indigo-600"
                                         }`}
                                 />
-                                {isSearchingAddress && (
-                                    <Loader2 className="absolute right-3 w-3.5 h-3.5 text-indigo-400 animate-spin" />
-                                )}
+                                {isSearchingAddress && <Loader2 className="absolute right-3 w-3.5 h-3.5 text-indigo-400 animate-spin" />}
                                 {!isSearchingAddress && addressSearchQuery && (
                                     <button
                                         type="button"
@@ -623,7 +691,6 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
                                 )}
                             </div>
 
-                            {/* Suggestions */}
                             {addressSuggestions.length > 0 && (
                                 <div className="absolute left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 overflow-hidden">
                                     {addressSuggestions.map((s, i) => (
@@ -642,7 +709,6 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
 
                         {errors.address && <p className="text-red-400 text-[11px] mb-1.5">{errors.address.message}</p>}
 
-                        {/* Map */}
                         <div className="relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700">
                             {mapLoading && (
                                 <div className="absolute inset-0 z-10 bg-slate-100 dark:bg-slate-800 flex flex-col items-center justify-center gap-2">
@@ -650,55 +716,8 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
                                     <span className="text-xs text-slate-500 dark:text-slate-400">Xarita yuklanmoqda...</span>
                                 </div>
                             )}
-                            {mapError && (
-                                <div className="absolute inset-0 z-10 bg-slate-100 dark:bg-slate-800 flex flex-col items-center justify-center gap-2">
-                                    <MapPin className="w-6 h-6 text-red-400" />
-                                    <span className="text-xs text-slate-500 dark:text-slate-400">Xarita yuklanmadi</span>
-                                </div>
-                            )}
-                            {!mapLoading && !mapError && !coords && (
-                                <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 bg-white/90 dark:bg-slate-900/90 text-slate-600 dark:text-slate-300 text-[11px] font-medium px-3 py-1.5 rounded-full shadow-md border border-slate-200 dark:border-slate-700 whitespace-nowrap pointer-events-none backdrop-blur-sm">
-                                    📍 Joylashuvni belgilash uchun xaritaga bosing
-                                </div>
-                            )}
                             <div ref={mapContainerRef} className="w-full h-[220px]" />
                         </div>
-
-                        {/* Coords badge */}
-                        {coords && (
-                            <div className="mt-2 flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 bg-indigo-50/60 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40 rounded-lg px-3 py-2">
-                                <MapPin className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                                <span>
-                                    <span className="font-semibold text-indigo-600 dark:text-indigo-400">Lat:</span> {coords.lat}
-                                    <span className="mx-2 text-slate-300 dark:text-slate-600">|</span>
-                                    <span className="font-semibold text-indigo-600 dark:text-indigo-400">Lng:</span> {coords.lng}
-                                </span>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        if (placemarkRef.current && mapInstanceRef.current) {
-                                            mapInstanceRef.current.geoObjects.remove(placemarkRef.current);
-                                            placemarkRef.current = null;
-                                        }
-                                        setCoords(null);
-                                        setValue("latitude", "");
-                                        setValue("longitude", "");
-                                    }}
-                                    className="ml-auto text-slate-400 hover:text-red-400 cursor-pointer transition-colors"
-                                >
-                                    <X className="w-3.5 h-3.5" />
-                                </button>
-                            </div>
-                        )}
-
-                        {(errors.latitude || errors.longitude) && (
-                            <p className="text-red-400 text-[11px] mt-1">
-                                {errors.latitude?.message || errors.longitude?.message}
-                            </p>
-                        )}
-
-                        <input type="hidden" {...register("latitude")} />
-                        <input type="hidden" {...register("longitude")} />
                     </div>
 
                     {/* Status & Subscription */}
@@ -722,14 +741,13 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
                                 className={`border rounded-lg w-full h-[40px] px-3 text-[14px] outline-none transition-all bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 ${errors.subscription_expires ? "border-red-300 dark:border-red-800" : "border-slate-200 dark:border-slate-700"
                                     }`}
                             />
-                            {errors.subscription_expires && <p className="text-red-400 text-[11px] mt-1">{errors.subscription_expires.message}</p>}
                         </div>
                     </div>
 
                     <button
                         type="submit"
                         disabled={isPending}
-                        className="w-full h-[40px] mt-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-lg text-[14px] font-bold transition-colors cursor-pointer flex items-center justify-center gap-2"
+                        className="w-full h-[40px] mt-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg text-[14px] font-bold transition-colors cursor-pointer flex items-center justify-center gap-2"
                     >
                         {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
                         {isPending ? t("centers.creating") : t("centers.create_btn")}

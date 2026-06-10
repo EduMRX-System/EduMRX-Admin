@@ -109,7 +109,24 @@ export default function AddStudentModal({ onClose }: AddStudentModalProps) {
             onClose();
         },
         onError: (err: any) => {
-            toast.error(err?.response?.data?.detail || "Xatolik yuz berdi!");
+            const errorData = err?.response?.data;
+            if (typeof errorData?.detail === 'string') {
+                if (errorData.detail.includes("users_email_key")) {
+                    toast.error("Bu email bilan foydalanuvchi allaqachon mavjud!");
+                } else {
+                    toast.error(errorData.detail);
+                }
+            }
+            else if (typeof errorData === 'object' && errorData !== null) {
+                const firstKey = Object.keys(errorData)[0];
+                const errorMessage = errorData[firstKey];
+
+                const text = Array.isArray(errorMessage) ? errorMessage[0] : errorMessage;
+                toast.error(`${firstKey}: ${text}`);
+            }
+            else {
+                toast.error("Tizimda xatolik yuz berdi, keyinroq urinib ko'ring.");
+            }
         }
     });
 
