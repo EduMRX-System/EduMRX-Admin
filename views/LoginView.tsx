@@ -98,7 +98,7 @@ export default function LoginView() {
                         Markazlashtirilgan Boshqaruv Tizimi
                     </h1>
                     <p className="text-sm text-slate-500 dark:text-slate-400 mt-3 leading-relaxed">
-                        EduX platformasining barcha filliallari, foydalanuvchilari va moliyaviy oqimlarini yuqori darajadagi xavfsizlik ostida boshqaring.
+                        EduMRX platformasining barcha filliallari, foydalanuvchilari va moliyaviy oqimlarini yuqori darajadagi xavfsizlik ostida boshqaring.
                     </p>
 
                     {/* Minimalist qulayliklar ro'yxati */}
@@ -120,13 +120,13 @@ export default function LoginView() {
 
                 {/* Footer qismi */}
                 <div className="text-xs text-slate-400 dark:text-slate-500 relative z-10">
-                    &copy; {new Date().getFullYear()} EduX HQ. All rights reserved.
+                    &copy; {new Date().getFullYear()} EduMRX HQ. All rights reserved.
                 </div>
             </div>
 
             {/* O'NG TOMON: Login Formasi */}
             <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12">
-                <div className="w-full max-w-[400px]">
+                <div className="w-full max-w-100">
 
                     {/* Mobil ekranlar uchun logotip (Faqat kichik ekranlarda chiqadi) */}
                     <div className="flex lg:hidden items-center gap-3 mb-8">
