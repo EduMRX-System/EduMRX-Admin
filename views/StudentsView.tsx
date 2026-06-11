@@ -132,12 +132,6 @@ export default function StudentsView() {
         )}
       </div>
 
-      {/* QIDIRUV ANIMATSIYASI */}
-      {isLoading && debouncedSearch && (
-        <div className="text-xs text-indigo-600 dark:text-indigo-400 animate-pulse py-1">
-          {t("common.searching", "Qidirilmoqda...")}
-        </div>
-      )}
 
       {/* ERROR STATE */}
       {isError && (

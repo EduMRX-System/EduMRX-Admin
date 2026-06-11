@@ -11,9 +11,8 @@ import { toast } from "react-toastify";
 import { PhoneInput } from "@/components/ui/PhoneInput";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import Image from "next/image";
-import { useTranslation } from "react-i18next"; // To'g'ri hook import qilindi
+import { useTranslation } from "react-i18next";
 
-// Dinamik tilga moslashuvchan Yup sxemasi
 const getDirectorSchema = (t: any) =>
     yup.object({
         first_name: yup
@@ -106,13 +105,14 @@ export default function AddDirectorModal({ onClose }: { onClose?: () => void }) 
     });
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
             {/* Backdrop */}
             <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
 
-            {/* Modal Content */}
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-xl max-w-xl w-full relative z-10 shadow-2xl border border-slate-100 dark:border-slate-800 transition-colors">
-                <button type="button" onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+            {/* Modal Content - max-h va overflow-y-auto qo'shildi */}
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-xl max-w-xl w-full relative z-10 shadow-2xl border border-slate-100 dark:border-slate-800 transition-colors max-h-[calc(100vh-2rem)] overflow-y-auto custom-scrollbar">
+                {/* Yopish tugmasiga z-20 qo'shildi, scroll bo'lganda inputlar ostida qolib ketmasligi uchun */}
+                <button type="button" onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 z-20 cursor-pointer">
                     <X className="w-5 h-5" />
                 </button>
 
@@ -121,48 +121,6 @@ export default function AddDirectorModal({ onClose }: { onClose?: () => void }) 
                 </h3>
 
                 <form onSubmit={handleSubmit((data) => createDirector(data))} className="space-y-4">
-
-                    {/* Image Upload UI Section */}
-                    <div className="flex gap-4 items-center border border-slate-200 dark:border-slate-700 rounded-xl p-3 bg-slate-50/50 dark:bg-slate-800/50 transition-colors">
-                        <div
-                            className="relative w-16 h-16 min-w-16 rounded-lg border border-dashed border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 flex items-center justify-center overflow-hidden group cursor-pointer"
-                            onClick={() => fileInputRef.current?.click()}
-                        >
-                            {avatarPreview ? (
-                                <Image
-                                    src={avatarPreview}
-                                    alt="Avatar preview"
-                                    fill
-                                    className="object-cover transition-transform duration-200 group-hover:scale-105"
-                                />
-                            ) : (
-                                <ImageIcon className="w-6 h-6 text-slate-300 dark:text-slate-600 transition-colors group-hover:text-slate-400" aria-hidden="true" />
-                            )}
-                        </div>
-
-                        <div className="w-full">
-                            <input
-                                type="file"
-                                ref={fileInputRef}
-                                onChange={handleFileChange}
-                                className="hidden"
-                                accept="image/png, image/jpeg, image/jpg, image/webp"
-                            />
-
-                            <button
-                                type="button"
-                                onClick={() => fileInputRef.current?.click()}
-                                className="inline-flex items-center gap-2 px-4 h-[38px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all cursor-pointer shadow-sm active:scale-[0.98]"
-                            >
-                                <Upload className="w-3.5 h-3.5" aria-hidden="true" />
-                                {t("directors.choose_file")}
-                            </button>
-
-                            <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
-                                {t("directors.file_restrictions") || "PNG, JPG, WEBP formatlari, 2MB gacha"}
-                            </p>
-                        </div>
-                    </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
@@ -173,7 +131,7 @@ export default function AddDirectorModal({ onClose }: { onClose?: () => void }) 
                                 {...register("first_name")}
                                 placeholder={t("directors.placeholder_first_name") || "Xusan"}
                                 className={`border rounded-lg w-full h-[40px] px-3 text-[14px] outline-none focus:border-indigo-500 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-colors
-                                    ${errors?.first_name?.message
+                                ${errors?.first_name?.message
                                         ? "border-red-300 dark:border-red-800 bg-red-50/10 focus:border-red-500"
                                         : "border-slate-200 dark:border-slate-700"
                                     }`}
@@ -189,7 +147,7 @@ export default function AddDirectorModal({ onClose }: { onClose?: () => void }) 
                                 {...register("last_name")}
                                 placeholder={t("directors.placeholder_last_name") || "Yarashev"}
                                 className={`border rounded-lg w-full h-[40px] px-3 text-[14px] outline-none focus:border-indigo-500 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-colors
-                                    ${errors?.last_name?.message
+                                ${errors?.last_name?.message
                                         ? "border-red-300 dark:border-red-800 bg-red-50/10 focus:border-red-500"
                                         : "border-slate-200 dark:border-slate-700"
                                     }`}
@@ -217,7 +175,7 @@ export default function AddDirectorModal({ onClose }: { onClose?: () => void }) 
                             {...register("email")}
                             placeholder="example@edumrx.uz"
                             className={`border rounded-lg w-full h-[40px] px-3 text-[14px] outline-none focus:border-indigo-500 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-colors
-                                ${errors?.email?.message
+                            ${errors?.email?.message
                                     ? "border-red-300 dark:border-red-800 bg-red-50/10 focus:border-red-500"
                                     : "border-slate-200 dark:border-slate-700"
                                 }`}
@@ -233,7 +191,7 @@ export default function AddDirectorModal({ onClose }: { onClose?: () => void }) 
                     <button
                         type="submit"
                         disabled={isPending}
-                        className="w-full h-10 mt-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold flex items-center justify-center transition-colors disabled:opacity-60 shadow-md active:scale-[0.99]"
+                        className="w-full h-10 mt-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold flex items-center justify-center transition-colors disabled:opacity-60 shadow-md active:scale-[0.99] cursor-pointer"
                     >
                         {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : t("directors.create_btn")}
                     </button>

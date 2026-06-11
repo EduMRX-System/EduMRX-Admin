@@ -146,7 +146,7 @@ export default function StudentDetailView({ id }: StudentDetailProps) {
               </div>
               <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 font-semibold flex items-center gap-1.5">
                 <ShieldAlert className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
-                <span>ID: {data.student_id || "—"}</span>
+                <span>ID: {data.id || "—"}</span>
               </p>
             </div>
           </div>

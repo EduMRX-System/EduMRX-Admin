@@ -365,12 +365,32 @@ export default function EditLearningCenterModal({ center, onClose }: EditModalPr
       onClose();
     },
     onError: (err: any) => {
-      toast.error(
-        err?.response?.data?.message ||
-        err?.message ||
-        "Yangilashda xatolik yuz berdi",
-      );
-    },
+      const errorData = err?.response?.data;
+      if (errorData && typeof errorData.detail === 'string') {
+        if (errorData.detail.includes("users_email_key")) {
+          return toast.error("Bu email bilan foydalanuvchi allaqachon mavjud!");
+        }
+        return toast.error(errorData.detail);
+      }
+
+      if (errorData && errorData.email) {
+        const emailError = Array.isArray(errorData.email) ? errorData.email[0] : errorData.email;
+        const cleanMessage = emailError.replace(/["']/g, "");
+        return toast.error(cleanMessage);
+      }
+
+      if (errorData && typeof errorData === 'object') {
+        const firstKey = Object.keys(errorData)[0];
+        if (firstKey) {
+          const errorMessage = errorData[firstKey];
+          const text = Array.isArray(errorMessage) ? errorMessage[0] : errorMessage;
+          const cleanText = typeof text === 'string' ? text.replace(/["']/g, "") : text;
+          return toast.error(`${firstKey}: ${cleanText}`);
+        }
+      }
+
+      toast.error("Tizimda xatolik yuz berdi, keyinroq urinib ko'ring.");
+    }
   });
 
   const handleSubmit = (e: React.FormEvent) => {

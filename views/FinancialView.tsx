@@ -18,6 +18,8 @@ import {
   Banknote,
   Clock,
   Loader2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import Title from "@/components/ui/Title";
 import Text from "@/components/ui/Text";
@@ -63,15 +65,20 @@ API.interceptors.response.use(
   }
 );
 
-/* ── 2. TYPES & INTERFACES ─────────────────────────────────── */
-
-
-/* ── 3. INLINE API DIRECT CALLS (404 VA SLASH TUZATILGAN) ──── */
+/* ── 3. INLINE API DIRECT CALLS ────────────────────────────── */
 const fetchSummary = () =>
   API.get<{ data: FinanceSummary }>("super-admin/finance/summary/");
 
-const fetchCenters = (params: CentersParams) =>
-  API.get<FinanceCentersResponse>("super-admin/finance/centers/", { params });
+const fetchCenters = (params: CentersParams & { page?: number; limit?: number }) => {
+  const { limit, ...rest } = params;
+
+  return API.get<FinanceCentersResponse>("super-admin/finance/centers/", {
+    params: {
+      ...rest,
+      per_page: limit
+    }
+  });
+};
 
 const fetchTransactions = (page = 1, limit = 20) =>
   API.get<TransactionsResponse>("super-admin/finance/transactions/", { params: { page, limit } });
@@ -120,7 +127,6 @@ function getMethodIcon(method: string) {
   return <Banknote className="w-3.5 h-3.5" />;
 }
 
-
 /* ── 6. MAIN VIEW COMPONENT ─────────────────────────────────── */
 export default function FinancialView() {
   const { t } = useTranslation();
@@ -130,6 +136,11 @@ export default function FinancialView() {
   const [sortField, setSortField] = useState<"month_revenue" | "total_revenue" | "students_count">("month_revenue");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
+  // PAGINATION STATES
+  // PAGINATION STATES
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5; // Backend default "per_page: 20" ga moslashtirildi
+
   /* ── Direct TanStack Query Hooks Internal Implementation ── */
   const { data: summary, isLoading: summaryLoading } = useQuery({
     queryKey: ["finance", "summary"],
@@ -138,13 +149,21 @@ export default function FinancialView() {
     staleTime: 15_000,
   });
 
+  // Kiritilgan qidiruv yoki filter o'zgarganda sahifani 1-ga qaytarish uchun effekt
+  const handleFilterChange = (updater: () => void) => {
+    updater();
+    setCurrentPage(1);
+  };
+
   const { data: centersData, isLoading: centersLoading } = useQuery({
-    queryKey: ["finance", "centers", statusFilter, searchQuery, sortField, sortDir],
+    queryKey: ["finance", "centers", statusFilter, searchQuery, sortField, sortDir, currentPage, itemsPerPage],
     queryFn: () => fetchCenters({
       status: statusFilter === "all" ? undefined : statusFilter,
       search: searchQuery || undefined,
       sort_by: sortField,
       sort_dir: sortDir,
+      page: currentPage,
+      limit: itemsPerPage,
     }).then((r) => r.data),
     staleTime: 30_000,
     placeholderData: (prev) => prev,
@@ -161,12 +180,16 @@ export default function FinancialView() {
   const centersMeta = centersData?.meta;
   const transactions = transactionsResponse?.data ?? [];
 
+  const totalPages = centersMeta
+    ? Math.ceil(centersMeta.total / (centersMeta.per_page || 10))
+    : 1;
   const toggleSort = (field: typeof sortField) => {
     if (sortField === field) setSortDir((d) => (d === "desc" ? "asc" : "desc"));
     else {
       setSortField(field);
       setSortDir("desc");
     }
+    setCurrentPage(1); // Sort o'zgarganda birinchi sahifaga qaytarish
   };
 
   const stats = [
@@ -183,7 +206,7 @@ export default function FinancialView() {
       label: "Shu Oydagi Tushum",
       value: summary ? formatUZS(summary.month_revenue) + " UZS" : "—",
       sub: "O'tgan oyga nisbatan",
-      color: "bg-emerald-50 border-emerald-100 dark:bg-emerald-950/30 dark:border-emerald-900",
+      color: "bg-emerald-50 border-emerald-100 dark:bg-emerald-950/30 dark:border-indigo-900",
       trend: summary
         ? {
           value: `${summary.month_revenue_change > 0 ? "+" : ""}${summary.month_revenue_change}%`,
@@ -204,7 +227,7 @@ export default function FinancialView() {
       label: "Kutilayotgan Qarzlar",
       value: summary ? formatUZS(summary.pending_debts) + " UZS" : "—",
       sub: summary ? `${summary.pending_debts_students_count} ta o'quvchidan` : "—",
-      color: "bg-amber-50 border-amber-100 dark:bg-amber-950/30 dark:border-amber-900",
+      color: "bg-amber-50 border-amber-100 dark:bg-amber-950/30 dark:border-blue-900",
       trend: summary
         ? {
           value: `${summary.pending_debts_change > 0 ? "+" : ""}${summary.pending_debts_change}%`,
@@ -364,7 +387,7 @@ export default function FinancialView() {
                   type="text"
                   placeholder={t("finance.search_placeholder")}
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => handleFilterChange(() => setSearchQuery(e.target.value))}
                   className="bg-transparent outline-none text-xs text-slate-700 dark:text-slate-300 placeholder:text-slate-400 dark:placeholder:text-slate-500 w-full sm:w-40"
                 />
               </div>
@@ -372,7 +395,7 @@ export default function FinancialView() {
                 {(["all", "active", "inactive"] as const).map((s) => (
                   <button
                     key={s}
-                    onClick={() => setStatusFilter(s)}
+                    onClick={() => handleFilterChange(() => setStatusFilter(s))}
                     className={`px-3 py-1.5 rounded-md cursor-pointer transition-all ${statusFilter === s
                       ? "bg-white dark:bg-slate-700 text-indigo-600 shadow-xs"
                       : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
@@ -492,25 +515,78 @@ export default function FinancialView() {
           </table>
         </div>
 
-        {/* Table Footer */}
-        <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-          <span className="text-xs text-slate-400 dark:text-slate-500">
-            {t("finance.total_centers_prefix")}{" "}
-            <span className="font-bold text-slate-700 dark:text-slate-300">
-              {centersLoading ? <Loader2 className="w-3 h-3 inline animate-spin" /> : centersMeta?.total ?? centers.length}
-            </span>{" "}
-            {t("finance.total_centers_suffix")}
-          </span>
-          <span className="text-xs text-slate-400 dark:text-slate-500">
-            {t("finance.total_revenue")}{" "}
-            <span className="font-bold text-indigo-600 dark:text-indigo-400">
-              {centersLoading ? (
-                <Loader2 className="w-3 h-3 inline animate-spin" />
-              ) : (
-                formatUZS(centersMeta?.total_revenue_sum ?? 0) + " UZS"
-              )}
+        {/* ── YANGILANGAN JAVDAL FOOTER + CHIROYLI PAGINATION CONTROLS ── */}
+        <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/50 dark:bg-slate-900/50">
+          <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-6 w-full sm:w-auto text-center sm:text-left">
+            <span className="text-xs text-slate-400 dark:text-slate-500">
+              {t("finance.total_centers_prefix")}{" "}
+              <span className="font-bold text-slate-700 dark:text-slate-300">
+                {centersLoading ? <Loader2 className="w-3 h-3 inline animate-spin" /> : centersMeta?.total ?? centers.length}
+              </span>{" "}
+              {t("finance.total_centers_suffix")}
             </span>
-          </span>
+            <span className="text-xs text-slate-400 dark:text-slate-500">
+              {t("finance.total_revenue")}{" "}
+              <span className="font-bold text-indigo-600 dark:text-indigo-400">
+                {centersLoading ? (
+                  <Loader2 className="w-3 h-3 inline animate-spin" />
+                ) : (
+                  formatUZS(centersMeta?.total_revenue_sum ?? 0) + " UZS"
+                )}
+              </span>
+            </span>
+          </div>
+
+          {/* Pagination Buttons */}
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1.5 self-center sm:self-auto">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                disabled={currentPage === 1 || centersLoading}
+                className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-transparent transition-all cursor-pointer"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              {[...Array(totalPages)].map((_, index) => {
+                const pageNumber = index + 1;
+
+                if (
+                  totalPages > 5 &&
+                  pageNumber !== 1 &&
+                  pageNumber !== totalPages &&
+                  Math.abs(pageNumber - currentPage) > 1
+                ) {
+                  if (pageNumber === 2 || pageNumber === totalPages - 1) {
+                    return <span key={pageNumber} className="px-1 text-slate-400 text-xs">...</span>;
+                  }
+                  return null;
+                }
+
+                return (
+                  <button
+                    key={pageNumber}
+                    onClick={() => setCurrentPage(pageNumber)}
+                    disabled={centersLoading}
+                    className={`w-7 h-7 text-xs font-bold rounded-lg transition-all cursor-pointer ${currentPage === pageNumber
+                      ? "bg-indigo-600 text-white shadow-xs"
+                      : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 border border-transparent"
+                      }`}
+                  >
+                    {pageNumber}
+                  </button>
+                );
+              })}
+
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                disabled={currentPage === totalPages || centersLoading}
+                className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-transparent transition-all cursor-pointer"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

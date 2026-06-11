@@ -26,7 +26,7 @@ export default function LearningCenterDetailView() {
     const { data, isLoading, error } = useQuery<ILearningCenterDetailData>({
         queryKey: ["learning-center-detail", centerId],
         queryFn: async () => {
-            const res = await API.get(`/super-admin/centers/${centerId}`);
+            const res = await API.get(`/super-admin/centers/${centerId}/`);
             return res?.data?.data ?? res?.data;
         },
         enabled: !!centerId,

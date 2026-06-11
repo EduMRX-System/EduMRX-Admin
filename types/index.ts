@@ -2,9 +2,9 @@ export interface IAPIResponse<T> {
   count: number;
   total_pages: number;
   current_page: number;
-  next: string;
-  previous: string;
-  results: T;
+  next: string | null;
+  previous: string | null;
+  results: T[];
 }
 
 export interface DashboardPayload {
@@ -75,7 +75,11 @@ export interface ILearningCenter {
   phone: string;
   email: string;
   address: string;
-  status: string;
+  longitude: string;
+  latitude: string;
+  status: "active" | "inactive";
+  plan: string;
+  director: string;
   director_name: string;
   students_count: number;
   subscription_expires: string;

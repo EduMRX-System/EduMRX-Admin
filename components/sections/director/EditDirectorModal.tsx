@@ -6,7 +6,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { API } from "@/services/api";
-import { X, Loader2, Upload, ImageIcon } from "lucide-react";
+import { X, Loader2, Upload, ImageIcon, User } from "lucide-react";
 import { toast } from "react-toastify";
 import { useTranslation } from "react-i18next";
 
@@ -132,61 +132,25 @@ export default function EditDirectorModal({ director, onClose }: { director: any
     });
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+            {/* Orqa fon (Backdrop) - fixed qoladi */}
             <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
-            <div className={`bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 rounded-xl max-w-xl w-full relative z-10 shadow-2xl transition-all duration-200 ${isMounted ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}>
 
-                <button type="button" onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
+            {/* Modal Konteyneri - max-h orqali balandlik cheklanadi va ichki scroll yoqiladi */}
+            <div className={`bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 rounded-xl max-w-xl w-full relative z-10 shadow-2xl transition-all duration-200 overflow-y-auto max-h-[calc(100vh-2rem)] custom-scrollbar ${isMounted ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}>
+
+                <button type="button" onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer z-20">
                     <X className="w-5 h-5" />
                 </button>
 
+                <div className="mb-[10px] border-slate-300 dark:border-slate-700 border shadow-sm w-[44px] h-[44px] rounded-lg flex justify-center items-center text-indigo-600 dark:text-indigo-400 bg-indigo-50/10 dark:bg-indigo-500/10">
+                    <User className="w-6 h-6" />
+                </div>
                 <h3 className="text-xl font-semibold mb-6 text-slate-900 dark:text-slate-100">
                     {t("directors.edit_title")}
                 </h3>
 
                 <form onSubmit={handleSubmit((data) => updateDirector(data))} className="space-y-4">
-
-                    <div className="flex gap-4 items-center border border-slate-200 dark:border-slate-700 rounded-xl p-3 bg-slate-50/50 dark:bg-slate-800/50 transition-colors">
-                        <div
-                            className="relative w-16 h-16 min-w-16 rounded-lg border border-dashed border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 flex items-center justify-center overflow-hidden group cursor-pointer"
-                            onClick={() => fileInputRef.current?.click()}
-                        >
-                            {avatarPreview ? (
-                                <Image
-                                    src={avatarPreview}
-                                    alt="Avatar preview"
-                                    fill
-                                    className="object-cover transition-transform duration-200 group-hover:scale-105"
-                                />
-                            ) : (
-                                <ImageIcon className="w-6 h-6 text-slate-300 dark:text-slate-600 transition-colors group-hover:text-slate-400" aria-hidden="true" />
-                            )}
-                        </div>
-
-                        <div className="w-full">
-                            <input
-                                type="file"
-                                ref={fileInputRef}
-                                onChange={handleFileChange}
-                                className="hidden"
-                                accept="image/png, image/jpeg, image/jpg, image/webp"
-                            />
-
-                            <button
-                                type="button"
-                                onClick={() => fileInputRef.current?.click()}
-                                className="inline-flex items-center gap-2 px-4 h-[38px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all cursor-pointer shadow-sm active:scale-[0.98]"
-                            >
-                                <Upload className="w-3.5 h-3.5" aria-hidden="true" />
-                                {t("directors.choose_file")}
-                            </button>
-
-                            <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
-                                {t("directors.file_restrictions") || "PNG, JPG, WEBP formatlari, 2MB gacha"}
-                            </p>
-                        </div>
-                    </div>
-
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1 block">
@@ -196,7 +160,7 @@ export default function EditDirectorModal({ director, onClose }: { director: any
                                 {...register("first_name")}
                                 placeholder={t("directors.placeholder_first_name") || "Xusan"}
                                 className={`border rounded-lg w-full h-[40px] px-3 text-[14px] outline-none focus:border-indigo-500 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-colors
-                                    ${errors?.first_name?.message
+                            ${errors?.first_name?.message
                                         ? "border-red-300 dark:border-red-800 bg-red-50/10 focus:border-red-500"
                                         : "border-slate-200 dark:border-slate-700"
                                     }`}
@@ -212,7 +176,7 @@ export default function EditDirectorModal({ director, onClose }: { director: any
                                 {...register("last_name")}
                                 placeholder={t("directors.placeholder_last_name") || "Yarashev"}
                                 className={`border rounded-lg w-full h-[40px] px-3 text-[14px] outline-none focus:border-indigo-500 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-colors
-                                    ${errors?.last_name?.message
+                            ${errors?.last_name?.message
                                         ? "border-red-300 dark:border-red-800 bg-red-50/10 focus:border-red-500"
                                         : "border-slate-200 dark:border-slate-700"
                                     }`}
@@ -240,7 +204,7 @@ export default function EditDirectorModal({ director, onClose }: { director: any
                             type="email"
                             placeholder="example@edumrx.uz"
                             className={`border rounded-lg w-full h-[40px] px-3 text-[14px] outline-none focus:border-indigo-500 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-colors
-                                ${errors?.email?.message
+                        ${errors?.email?.message
                                     ? "border-red-300 dark:border-red-800 bg-red-50/10 focus:border-red-500"
                                     : "border-slate-200 dark:border-slate-700"
                                 }`}
@@ -249,7 +213,6 @@ export default function EditDirectorModal({ director, onClose }: { director: any
                     </div>
 
                     <div>
-
                         <PasswordInput register={register("password")} error={errors.password?.message} />
                         <p className="text-slate-400 dark:text-slate-500 text-[11px] mt-1">
                             {t("directors.password_hint") || "* Parolni o'zgartirmoqchi bo'lsangizgina kiriting, aks holda bo'sh qoldiring."}

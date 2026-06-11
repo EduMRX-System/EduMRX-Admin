@@ -331,8 +331,7 @@ export default function DashboardView() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {recentActivities.map((activity) => (
-            <Link
-              href={`/centers/${activity.id}`}
+            <div
               key={activity.id}
               className="flex flex-col justify-between p-4 bg-slate-50/40 dark:bg-slate-800/20 border border-slate-100/60 dark:border-slate-800/40 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-all duration-200"
             >
@@ -359,7 +358,7 @@ export default function DashboardView() {
                   {activity.status === "active" ? t("dashboard.status.active") : t("dashboard.status.pending")}
                 </span>
               </div>
-            </Link>
+            </div>
           ))}
         </div>
       </div>

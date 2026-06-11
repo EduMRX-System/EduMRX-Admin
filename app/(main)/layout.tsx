@@ -44,7 +44,7 @@ export default function MailLayout({
           </header>
 
           <main className="p-4 md:p-[30px] flex-1 overflow-y-auto transition-all duration-300 bg-[#F8F9FA] dark:bg-slate-950 h-full w-full">
-            <div className="max-w-[1600px] mx-auto w-full">
+            <div className="  w-full">
               {children}
             </div>
           </main>
@@ -53,4 +53,4 @@ export default function MailLayout({
       </div>
     </ProtectedRoute>
   );
-}
+}

@@ -21,8 +21,8 @@ export const PhoneInput = ({ value, onChange, error }: PhoneInputProps) => {
                 {t("common.phone")}
             </label>
             <div className="relative flex items-center">
-                <div className="absolute left-3 flex items-center gap-1.5 pointer-events-none">
-                    <span className="text-base">🇺🇿</span>
+                <div className="absolute left-3 flex items-center gap-3 pointer-events-none">
+                    <span className="text-base text-[#fff9]">🇺🇿</span>
                     <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">+998</span>
                 </div>
                 <input

@@ -24,7 +24,7 @@ export default function Header() {
 
     return (
         <header className="sticky top-0 z-40 w-full bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 transition-colors">
-            <div className="max-w-[1600px] mx-auto px-6 h-16 flex justify-between items-center lg:justify-end">
+            <div className=" mx-auto px-6 h-16 flex justify-between items-center lg:justify-end">
 
                 {/* Mobile hamburger */}
                 <button

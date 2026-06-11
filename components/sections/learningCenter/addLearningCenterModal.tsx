@@ -6,12 +6,16 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { API } from "@/services/api";
-import { Building2, Upload, Link, Image as ImageIcon, X, Search, ChevronDown, MapPin, Loader2, Phone } from "lucide-react";
+import {
+    Building2, Upload, Link, Image as ImageIcon, X, Search,
+    ChevronDown, MapPin, Loader2, Phone, Check, User
+} from "lucide-react";
 import { toast } from "react-toastify";
 import { t } from "i18next";
 import Image from "next/image";
 import { Director } from "@/types";
 
+// Telefon raqamni formatlash funksiyasi
 function formatUzPhone(raw: string): string {
     const d = raw.slice(0, 9);
     if (d.length <= 2) return d;
@@ -20,6 +24,17 @@ function formatUzPhone(raw: string): string {
     return `${d.slice(0, 2)}-${d.slice(2, 5)}-${d.slice(5, 7)}-${d.slice(7)}`;
 }
 
+// Holat turlari (TypeScript uchun)
+type StatusType = "active" | "inactive" | "frozen";
+
+// Statuslar ro'yxati va dizayni (Rasmdagi kabi qo'lda chizilgan Dropdown uchun)
+const statusOptions = [
+    { value: "active" as StatusType, label: "Faol", color: "bg-emerald-500" },
+    { value: "inactive" as StatusType, label: "Faol emas", color: "bg-rose-500" },
+    { value: "frozen" as StatusType, label: "Muzlatilgan", color: "bg-amber-500" },
+];
+
+// Yup Validatsiya sxemasi
 const schema = yup.object({
     name: yup.string().required("O'quv markazi nomi shart"),
     slug: yup.string().required("Slug shart").matches(/^[a-z0-9-_]+$/, "Faqat kichik harf, raqam va tire"),
@@ -33,7 +48,7 @@ const schema = yup.object({
     email: yup.string().email("Xato email formati").required("Email kiritilishi shart"),
     address: yup.string().required("Manzil kiritilishi shart"),
     director: yup.string().uuid("Direktor UUID formatida bo'lishi shart").required("Direktorni tanlash shart"),
-    status: yup.string().oneOf(["active", "pending", "inactive"]).required("Status shart"),
+    status: yup.string().oneOf(["active", "inactive", "frozen"]).required("Status shart"),
     subscription_expires: yup.string().required("Obuna tugash sanasi shart"),
     latitude: yup.string().required("Xaritadan joylashuvni belgilang"),
     longitude: yup.string().required("Xaritadan joylashuvni belgilang"),
@@ -47,7 +62,6 @@ let ymapsPromise: Promise<void> | null = null;
 function loadYandexMaps(): Promise<void> {
     if (ymapsLoaded) return Promise.resolve();
     if (ymapsPromise) return ymapsPromise;
-
     ymapsPromise = new Promise((resolve, reject) => {
         const apiKey = process.env.NEXT_PUBLIC_YANDEX_MAPS_KEY;
         const script = document.createElement("script");
@@ -62,8 +76,14 @@ function loadYandexMaps(): Promise<void> {
         script.onerror = () => reject(new Error("Yandex Maps yuklanmadi"));
         document.head.appendChild(script);
     });
-
     return ymapsPromise;
+}
+
+interface FetchDirectorsResponse {
+    count: number;
+    next: string | null;
+    previous: string | null;
+    results: Director[];
 }
 
 export default function AddLearningCenterModal({ onClose }: { onClose?: () => void }) {
@@ -74,13 +94,17 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-    // Director dropdown
-    const [isOpen, setIsOpen] = useState(false);
+    // Director dropdown holatlari
+    const [isDirectorOpen, setIsDirectorOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedDirectorName, setSelectedDirectorName] = useState("");
-    const dropdownRef = useRef<HTMLDivElement>(null);
+    const directorDropdownRef = useRef<HTMLDivElement>(null);
 
-    // Yandex Maps
+    // Status dropdown holatlari (Qo'lda chizilgan dropdown)
+    const [isStatusOpen, setIsStatusOpen] = useState(false);
+    const statusDropdownRef = useRef<HTMLDivElement>(null);
+
+    // Yandex Maps holatlari
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapInstanceRef = useRef<any>(null);
     const placemarkRef = useRef<any>(null);
@@ -93,14 +117,12 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
     const suggestionsRef = useRef<HTMLDivElement>(null);
     const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
 
     const {
         register,
         handleSubmit,
-        setError,
         setValue,
         reset,
         watch,
@@ -113,12 +135,17 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
         },
     });
 
+    const currentStatus = watch("status") as StatusType;
+
     useEffect(() => {
         setIsMounted(true);
 
         const handleClickOutside = (event: MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-                setIsOpen(false);
+            if (directorDropdownRef.current && !directorDropdownRef.current.contains(event.target as Node)) {
+                setIsDirectorOpen(false);
+            }
+            if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target as Node)) {
+                setIsStatusOpen(false);
             }
             if (suggestionsRef.current && !suggestionsRef.current.contains(event.target as Node)) {
                 setAddressSuggestions([]);
@@ -128,7 +155,7 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    // Yandex Map init
+    // Yandex Map initializatsiyasi
     useEffect(() => {
         if (!isMounted) return;
 
@@ -189,7 +216,6 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
         map.geoObjects.add(placemark);
         placemarkRef.current = placemark;
 
-        // Reverse geocode — manzilni olish
         ymaps.geocode(coordinate, { results: 1 }).then((res: any) => {
             const firstGeoObject = res.geoObjects.get(0);
             if (firstGeoObject) {
@@ -200,7 +226,7 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
         });
     }, [setValue]);
 
-    // Address qidiruv
+    // Manzil qidirish
     const handleAddressSearch = (query: string) => {
         setAddressSearchQuery(query);
         setValue("address", query, { shouldValidate: true });
@@ -233,9 +259,8 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
                 setAddressSuggestions(suggestions);
             } catch {
                 setAddressSuggestions([]);
-            } finally {
-                setIsSearchingAddress(false);
-            }
+            } selectSuggestion;
+            setIsSearchingAddress(false);
         }, 400);
     };
 
@@ -251,22 +276,37 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
         setAddressSuggestions([]);
     };
 
-    // Directors
-    const { data: directors, isLoading: isDirectorsLoading } = useQuery({
-        queryKey: ["directors-list"],
-        queryFn: async () => {
-            const res = await API.get("super-admin/directors/");
-            return res?.data?.results || res?.data || [];
-        },
+    // Direktorlarni Server-side pagination & search bilan yuklash
+    const fetchDirectors = async (page: number, search: string): Promise<FetchDirectorsResponse> => {
+        const response = await API.get("super-admin/directors/", {
+            params: {
+                page: page,
+                page_size: 5,
+                search: search || undefined,
+            },
+        });
+        return response.data;
+    };
+
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedSearch(searchTerm);
+            setCurrentPage(1);
+        }, 400);
+
+        return () => clearTimeout(handler);
+    }, [searchTerm]);
+
+    const { data, isLoading: isDirectorsLoading, isFetching } = useQuery({
+        queryKey: ["directors", currentPage, debouncedSearch],
+        queryFn: () => fetchDirectors(currentPage, debouncedSearch),
     });
 
-    const filteredDirectors = Array.isArray(directors)
-        ? directors.filter((dir: any) => {
-            const nameToSearch = (dir.full_name || dir.name || "").toLowerCase();
-            return nameToSearch.includes(searchTerm.toLowerCase());
-        })
-        : [];
+    const directorsList = data?.results || [];
+    const totalCount = data?.count || 0;
+    const totalPages = Math.ceil(totalCount / 5);
 
+    // Markaz qo'shish mutatsiyasi
     const { mutate: addCenter, isPending } = useMutation({
         mutationFn: async (body: FormData) => {
             const formData = new FormData();
@@ -303,36 +343,25 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
             queryClient.invalidateQueries({ queryKey: ["learning-centers"] });
             onClose?.();
         },
-        onError: (error: any) => {
-            const responseData = error?.response?.data;
-
-            if (responseData && typeof responseData === "object") {
-                Object.keys(responseData).forEach((key) => {
-                    const message = Array.isArray(responseData[key])
-                        ? responseData[key][0]
-                        : responseData[key];
-
-                    // 1. Agar formada tegishli input bo'lsa, uni belgilaymiz
-                    if (key in schema.fields) {
-                        setError(key as any, {
-                            type: "manual",
-                            message: message,
-                        });
-                    }
-
-                    // 2. Toastda chiqarish uchun chiroyli formatlash
-                    // 'non_field_errors' yoki 'detail' kabi umumiy xatolarni alohida tutamiz
-                    if (key === "detail" || key === "non_field_errors") {
-                        toast.error(message);
-                    } else {
-                        // Input xatosini toastda ham ko'rsatishni istasangiz:
-                        toast.error(`${key}: ${message}`);
-                    }
-                });
-            } else {
-                toast.error("Xatolik yuz berdi, qaytadan urinib ko'ring");
+        onError: (err: any) => {
+            const errorData = err?.response?.data;
+            if (errorData && typeof errorData.detail === 'string') {
+                if (errorData.detail.includes("users_email_key")) {
+                    return toast.error("Bu email bilan foydalanuvchi allaqachon mavjud!");
+                }
+                return toast.error(errorData.detail);
             }
-        },
+            if (errorData && typeof errorData === 'object') {
+                const firstKey = Object.keys(errorData)[0];
+                if (firstKey) {
+                    const errorMessage = errorData[firstKey];
+                    const text = Array.isArray(errorMessage) ? errorMessage[0] : errorMessage;
+                    const cleanText = typeof text === 'string' ? text.replace(/["']/g, "") : text;
+                    return toast.error(`${firstKey}: ${cleanText}`);
+                }
+            }
+            toast.error("Tizimda xatolik yuz berdi, keyinroq urinib ko'ring.");
+        }
     });
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -381,43 +410,6 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
             : "border-slate-200 dark:border-slate-700 focus:border-indigo-400 dark:focus:border-indigo-600"
         }`;
 
-    interface FetchDirectorsResponse {
-        count: number;
-        next: string | null;
-        previous: string | null;
-        results: Director[];
-    }
-
-
-    const fetchDirectors = async (page: number, search: string): Promise<FetchDirectorsResponse> => {
-        const response = await API.get("super-admin/directors/", {
-            params: {
-                page: page,
-                page_size: 5,
-                search: search || undefined,
-            },
-        });
-        return response.data;
-    };
-
-    useEffect(() => {
-        const handler = setTimeout(() => {
-            setDebouncedSearch(searchTerm);
-            setCurrentPage(1);
-        }, 400);
-
-        return () => clearTimeout(handler);
-    }, [searchTerm]);
-
-    const { data, isLoading, isFetching } = useQuery({
-        queryKey: ["directors", currentPage, debouncedSearch],
-        queryFn: () => fetchDirectors(currentPage, debouncedSearch),
-    });
-
-    const directorsList = data?.results || [];
-    const totalCount = data?.count || 0;
-    const totalPages = Math.ceil(totalCount / 5);
-
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             {/* Backdrop overlay */}
@@ -426,12 +418,10 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
                 onClick={onClose}
             />
 
-            {/* Modal Content - Max balandlik va ichki scroll bilan */}
+            {/* Modal Content */}
             <div
-                className={`bg-white dark:bg-slate-900 p-6 rounded-xl max-w-xl w-full max-h-[90vh] overflow-y-auto relative z-10 shadow-2xl border border-slate-100 dark:border-slate-800 transform transition-all duration-500 ease-out ${isMounted ? "opacity-100 translate-y-0 scale-100" : "opacity-0 -translate-y-12 scale-95"
-                    }`}
+                className={`bg-white dark:bg-slate-900 p-6 rounded-xl max-w-xl w-full max-h-[90vh] overflow-y-auto relative z-10 shadow-2xl border border-slate-100 dark:border-slate-800 transform transition-all duration-500 ease-out ${isMounted ? "opacity-100 translate-y-0 scale-100" : "opacity-0 -translate-y-12 scale-95"}`}
             >
-                {/* STICKY "X" BUTTON: Kontent scroll bo'lganda ham tepada qimirlamay turadi */}
                 {onClose && (
                     <div className="sticky top-0 z-30 float-right clear-both">
                         <button
@@ -446,7 +436,6 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
                     </div>
                 )}
 
-                {/* Icon & Title */}
                 <div className="mb-[10px] border border-slate-200 dark:border-slate-700 shadow-sm w-[44px] h-[44px] rounded-lg flex justify-center items-center text-indigo-600 bg-indigo-50/10 dark:bg-indigo-950/20">
                     <Building2 className="w-6 h-6" />
                 </div>
@@ -456,7 +445,6 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
                 </h3>
 
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-
                     {/* Name & Slug */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
@@ -524,32 +512,27 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
                     </div>
 
                     {/* Director Dropdown */}
-                    <div ref={dropdownRef} className="relative">
+                    <div ref={directorDropdownRef} className="relative">
                         <label className="text-[14px] text-slate-600 dark:text-slate-300 mb-1 block font-semibold">
                             {t("centers.director")}
                         </label>
-
-                        {/* Dropdown Trigger */}
                         <div
-                            onClick={() => setIsOpen(!isOpen)}
+                            onClick={() => setIsDirectorOpen(!isDirectorOpen)}
                             className={`border rounded-lg w-full h-[40px] px-3 text-[14px] flex items-center justify-between cursor-pointer bg-white dark:bg-slate-800 transition-all
-            ${errors.director ? "border-red-300 dark:border-red-800" : "border-slate-200 dark:border-slate-700"}`}
+                            ${errors.director ? "border-red-300 dark:border-red-800" : "border-slate-200 dark:border-slate-700"}`}
                         >
                             <span className={selectedDirectorName ? "text-slate-900 dark:text-slate-100" : "text-slate-400 dark:text-slate-500"}>
                                 {selectedDirectorName || t("centers.select_director")}
                             </span>
-                            {(isLoading || isFetching) ? (
+                            {(isDirectorsLoading || isFetching) ? (
                                 <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />
                             ) : (
-                                <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+                                <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isDirectorOpen ? "rotate-180" : ""}`} />
                             )}
                         </div>
 
-                        {/* Dropdown Menu */}
-                        {isOpen && (
+                        {isDirectorOpen && (
                             <div className="absolute left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 overflow-hidden flex flex-col animate-in fade-in-50 duration-150">
-
-                                {/* Search Input */}
                                 <div className="p-2 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2 bg-slate-50 dark:bg-slate-800/80 sticky top-0 z-10">
                                     <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                                     <input
@@ -561,14 +544,10 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
                                         autoFocus
                                     />
                                     {searchTerm && (
-                                        <X
-                                            onClick={() => setSearchTerm("")}
-                                            className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
-                                        />
+                                        <X onClick={() => setSearchTerm("")} className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer" />
                                     )}
                                 </div>
 
-                                {/* Directors List */}
                                 <div className="overflow-y-auto max-h-[180px] divide-y divide-slate-50 dark:divide-slate-700/50">
                                     {directorsList.length > 0 ? (
                                         directorsList.map((dir) => {
@@ -579,10 +558,10 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
                                                     onClick={() => {
                                                         setSelectedDirectorName(fullName);
                                                         setValue("director", dir.id, { shouldValidate: true });
-                                                        setIsOpen(false);
+                                                        setIsDirectorOpen(false);
                                                     }}
                                                     className={`px-3 py-2 text-[13px] hover:bg-indigo-50 dark:hover:bg-indigo-950/60 cursor-pointer transition-colors flex flex-col gap-0.5
-                      ${watch("director") === dir.id ? "bg-indigo-50/60 dark:bg-indigo-950/40 font-medium text-indigo-600" : "text-slate-900 dark:text-slate-100"}`}
+                                                    ${watch("director") === dir.id ? "bg-indigo-50/60 dark:bg-indigo-950/40 font-medium text-indigo-600" : "text-slate-900 dark:text-slate-100"}`}
                                                 >
                                                     <span className="font-medium">{fullName}</span>
                                                     {dir.phone && <span className="text-[11px] text-slate-400 dark:text-slate-500">+{dir.phone}</span>}
@@ -591,12 +570,11 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
                                         })
                                     ) : (
                                         <div className="px-3 py-4 text-xs text-center text-slate-400 dark:text-slate-500">
-                                            {isLoading || isFetching ? "Yuklanmoqda..." : t("common.no_results")}
+                                            {isDirectorsLoading || isFetching ? "Yuklanmoqda..." : t("common.no_results")}
                                         </div>
                                     )}
                                 </div>
 
-                                {/* Pagination Controls inside Dropdown Footer */}
                                 {totalPages > 1 && (
                                     <div className="p-2 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50 text-xs">
                                         <button
@@ -620,7 +598,6 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
                                         </button>
                                     </div>
                                 )}
-
                             </div>
                         )}
                     </div>
@@ -639,8 +616,7 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
                                     value={phoneDisplay}
                                     onChange={handlePhoneChange}
                                     placeholder="90-123-45-67"
-                                    className={`border rounded-lg w-full h-[40px] pl-[90px] pr-[10px] text-[14px] outline-none transition-all bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 ${errors.phone ? "border-red-300 dark:border-red-800 bg-red-50/10" : "border-slate-200 dark:border-slate-700"
-                                        }`}
+                                    className={`border rounded-lg w-full h-[40px] pl-[90px] pr-[10px] text-[14px] outline-none transition-all bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 ${errors.phone ? "border-red-300 dark:border-red-800 bg-red-50/10" : "border-slate-200 dark:border-slate-700"}`}
                                 />
                             </div>
                             {errors.phone && <p className="text-red-400 text-[11px] mt-1 ml-2">{errors.phone.message}</p>}
@@ -672,8 +648,7 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
                                     value={addressSearchQuery}
                                     onChange={(e) => handleAddressSearch(e.target.value)}
                                     placeholder={t("centers.address_placeholder")}
-                                    className={`border rounded-lg w-full h-[40px] pl-9 pr-9 text-[14px] outline-none transition-all bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 ${errors.address ? "border-red-300 dark:border-red-800" : "border-slate-200 dark:border-slate-700 focus:border-indigo-400 dark:focus:border-indigo-600"
-                                        }`}
+                                    className={`border rounded-lg w-full h-[40px] pl-9 pr-9 text-[14px] outline-none transition-all bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 ${errors.address ? "border-red-300 dark:border-red-800" : "border-slate-200 dark:border-slate-700 focus:border-indigo-400 dark:focus:border-indigo-600"}`}
                                 />
                                 {isSearchingAddress && <Loader2 className="absolute right-3 w-3.5 h-3.5 text-indigo-400 animate-spin" />}
                                 {!isSearchingAddress && addressSearchQuery && (
@@ -722,24 +697,55 @@ export default function AddLearningCenterModal({ onClose }: { onClose?: () => vo
 
                     {/* Status & Subscription */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="text-[14px] text-slate-600 dark:text-slate-300 mb-1 block font-semibold">{t("centers.col_status")}</label>
-                            <select
-                                {...register("status")}
-                                className="border border-slate-200 dark:border-slate-700 rounded-lg w-full h-[40px] px-3 text-[14px] outline-none bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 transition-colors cursor-pointer"
+                        {/* Qo'lda chizilgan Custom Status Dropdown (Rasmdagi dizayn va TS xatolik to'liq tuzatildi) */}
+                        <div ref={statusDropdownRef} className="relative">
+                            <label className="text-[14px] text-slate-600 dark:text-slate-300 mb-1 block font-semibold">Holati</label>
+                            <div
+                                onClick={() => setIsStatusOpen(!isStatusOpen)}
+                                className="border border-slate-200 dark:border-slate-700 rounded-lg w-full h-[40px] px-3 text-[14px] flex items-center justify-between cursor-pointer bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 transition-colors"
                             >
-                                <option value="active">{t("centers.status.active")}</option>
-                                <option value="pending">{t("centers.status.pending")}</option>
-                                <option value="inactive">{t("centers.status.inactive")}</option>
-                            </select>
+                                <div className="flex items-center gap-2">
+                                    <span className={`w-2 h-2 rounded-full ${statusOptions.find(o => o.value === currentStatus)?.color || "bg-slate-400"}`} />
+                                    <span>{statusOptions.find(o => o.value === currentStatus)?.label || "Tanlang"}</span>
+                                </div>
+                                <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isStatusOpen ? "rotate-180" : ""}`} />
+                            </div>
+
+                            {isStatusOpen && (
+                                <div className="absolute left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 overflow-hidden flex flex-col">
+                                    {statusOptions.map((option) => {
+                                        const isSelected = option.value === currentStatus;
+                                        return (
+                                            <div
+                                                key={option.value}
+                                                onClick={() => {
+                                                    // BU YERDA Type-Casting 'as any' orqali TS string xatoligining oldi olindi
+                                                    setValue("status", option.value as any, { shouldValidate: true });
+                                                    setIsStatusOpen(false);
+                                                }}
+                                                className={`px-3 py-2 text-[14px] cursor-pointer transition-colors flex items-center justify-between
+                                                ${isSelected
+                                                        ? "bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 font-medium"
+                                                        : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50"}`}
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`w-2 h-2 rounded-full ${option.color}`} />
+                                                    <span>{option.label}</span>
+                                                </div>
+                                                {isSelected && <Check className="w-4 h-4 text-indigo-600 shrink-0" />}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
+
                         <div>
                             <label className="text-[14px] text-slate-600 dark:text-slate-300 mb-1 block font-semibold">{t("centers.subscription_expires")}</label>
                             <input
                                 {...register("subscription_expires")}
                                 type="date"
-                                className={`border rounded-lg w-full h-[40px] px-3 text-[14px] outline-none transition-all bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 ${errors.subscription_expires ? "border-red-300 dark:border-red-800" : "border-slate-200 dark:border-slate-700"
-                                    }`}
+                                className={`border rounded-lg w-full h-[40px] px-3 text-[14px] outline-none transition-all bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 ${errors.subscription_expires ? "border-red-300 dark:border-red-800" : "border-slate-200 dark:border-slate-700"}`}
                             />
                         </div>
                     </div>
