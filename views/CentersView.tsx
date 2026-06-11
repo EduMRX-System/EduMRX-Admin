@@ -146,7 +146,7 @@ export default function LearningCentersList() {
 
             {/* BO'SH HOLAT */}
             {!isLoading && !isError && centersList.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-slate-900 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-center min-h-[380px] transition-colors">
+                <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-slate-900 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-center min-h-95 transition-colors">
                     <div className="w-14 h-14 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-full flex items-center justify-center text-slate-400 mb-4 shadow-xs">
                         <Building2 className="w-7 h-7" />
                     </div>
