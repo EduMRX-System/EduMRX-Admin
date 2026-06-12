@@ -80,7 +80,7 @@ export default function LoginView() {
                     </span>
                     <div>
                         <p className="text-xl font-black text-slate-900 dark:text-white leading-none tracking-tight">
-                            EDU X
+                            EDUMRX
                         </p>
                         <p className="text-slate-500 dark:text-slate-400 text-xs font-bold mt-1 uppercase tracking-wider">
                             HQ Console
@@ -134,7 +134,7 @@ export default function LoginView() {
                             EX
                         </span>
                         <p className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
-                            EDU X <span className="text-xs font-medium text-slate-400">HQ</span>
+                            EDUMRX <span className="text-xs font-medium text-slate-400">HQ</span>
                         </p>
                     </div>
 
