@@ -5,6 +5,7 @@ import { API } from "@/services/api";
 import { X, AlertTriangle, Loader2 } from "lucide-react";
 import { toast } from "react-toastify";
 import { t } from "i18next";
+import { useRouter } from "next/navigation";
 
 interface DeleteModalProps {
   centerId: string;
@@ -14,6 +15,7 @@ interface DeleteModalProps {
 
 export default function DeleteLearningCenterModal({ centerId, centerName, onClose }: DeleteModalProps) {
   const queryClient = useQueryClient();
+  const router = useRouter()
 
   const { mutate: deleteCenter, isPending } = useMutation({
     mutationFn: async () => {
@@ -21,7 +23,8 @@ export default function DeleteLearningCenterModal({ centerId, centerName, onClos
     },
     onSuccess: () => {
       toast.success("O'quv markazi tizimdan butkul o'chirildi");
-      queryClient.invalidateQueries({ queryKey: ["learning-centers"] });
+      queryClient.invalidateQueries({ queryKey: ["learning-centers", "learning-center-detail"] });
+      router.push("/centers");
       onClose();
     },
     onError: (err: any) => {

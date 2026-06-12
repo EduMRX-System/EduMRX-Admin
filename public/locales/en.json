@@ -200,11 +200,36 @@
     "col_status": "Status",
     "col_subscription": "Subscription",
     "students": "Students",
+    "col_plan": "Subscription Plan",
+    "select_plan": "Select Plan...",
     "status": {
       "active": "Active",
-      "pending": "Pending",
-      "inactive": "Inactive"
+      "suspended": "Suspended",
+      "inactive": "Inactive",
+      "frozen": "Frozen",
+      "label": "Status"
     }
+  },
+  "map": {
+    "location_label": "Location on Map",
+    "search_placeholder": "Search for an address or place...",
+    "loading": "Loading map...",
+    "load_error": "Failed to load Yandex Maps"
+  },
+  "plan": {
+    "trial_label": "Trial",
+    "trial_desc": "Trial period, limited features",
+    "pro_label": "Pro",
+    "pro_desc": "Best choice for mid-sized centers",
+    "max_label": "Max",
+    "max_desc": "Advanced features and maximum speed",
+    "enterprise_label": "Enterprise",
+    "enterprise_desc": "Custom solutions for large networks"
+  },
+  "api_messages": {
+    "email_exists": "A user with this email already exists!",
+    "system_error": "A system error occurred, please try again later.",
+    "success_created": "Successfully created!"
   },
   "settings": {
     "title": "Settings",

@@ -182,18 +182,21 @@ export interface ILearningCenterDetailData {
   id: string;
   name: string;
   slug: string;
-  logo: string | null;
+  logo: string;
   phone: string;
   email: string;
   address: string;
-  status: "active" | "inactive" | string;
+  status: string;
+  plan: string;
   director: string;
   director_name: string;
   director_phone: string;
+  longitude: string;
+  latitude: string;
   subscription_expires: string;
-  is_subscription_active: boolean;
-  students_count: number;
-  teachers_count: number;
+  is_subscription_active: true;
+  students_count: 0;
+  teachers_count: 0;
   created_at: string;
 }
 

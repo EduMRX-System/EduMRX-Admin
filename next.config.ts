@@ -1,11 +1,21 @@
+import withPWAInit from "@ducanh2912/next-pwa";
 import type { NextConfig } from "next";
+
+const withPWA = withPWAInit({
+  dest: "public",
+  cacheOnFrontEndNav: true,
+  aggressiveFrontEndNavCaching: true,
+  reloadOnOnline: true,
+  disable: process.env.NODE_ENV === "development",
+  workboxOptions: {
+    disableDevLogs: true,
+  },
+});
 
 const nextConfig: any = {
   reactCompiler: true,
 
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
+  turbopack: {}, // ← Turbopack uchun bo'sh config (xatoni o'chiradi)
 
   typescript: {
     ignoreBuildErrors: true,
@@ -41,4 +51,4 @@ const nextConfig: any = {
   },
 };
 
-export default nextConfig;
+export default withPWA(nextConfig);
